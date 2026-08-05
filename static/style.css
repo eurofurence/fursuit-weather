@@ -1,0 +1,1129 @@
+/* Fantastic Furry Festival -- weather.
+   Palette is the festival's own; the layout stays deliberately plain.
+
+   Author: laffiesphere. */
+
+:root {
+  /* Festival palette */
+  --ef-green: #006666;
+  --midnight-green: #143b4d;
+  --cool-slate: #4f6374;
+  --charcoal: #2b1624;
+  --burnt-umber: #452029;
+  --blue-black: #1a2039;
+  --midnight-teal: #222b54;
+  --cool-indigo: #e7e9f2;
+  --warm-sand: #e4d0c7;
+  --pink: #fda8ea;
+  --hot-pink: #f13ca3;
+  --light-magenta: #a06dfb;
+  --electric-cyan: #b3ffff;
+  --festival-amber: #ffd633;
+
+  /* Roles. The festival palette is a dark one, so the site is dark by design
+     rather than following the system theme. */
+  --bg: var(--blue-black);
+  --card: var(--midnight-teal);
+  --inset: #171d33;
+  --text: var(--cool-indigo);
+  /* Cool Slate alone is too dark to read on Midnight Teal, so lift it toward
+     Cool Indigo instead of dropping the hue. */
+  --muted: color-mix(in srgb, var(--cool-indigo) 55%, var(--cool-slate));
+  --border: color-mix(in srgb, var(--cool-slate) 45%, var(--midnight-teal));
+  --accent: var(--electric-cyan);
+  --accent-ink: var(--blue-black);
+  /* The "now" line on the charts. Deliberately a plain red: the palette's hot
+     pink is the worst band, and DWD's severe red only ever appears as a wide
+     hatched band, so a thin vertical line reads as neither. */
+  --now: #ff2f2f;
+  --radius: 14px;
+  --shadow: 0 2px 10px rgb(0 0 0 / 28%);
+}
+
+* { box-sizing: border-box; }
+
+/* `hidden` must beat any author `display:` rule on the same element. */
+[hidden] { display: none !important; }
+
+
+body {
+  margin: 0;
+  padding: 0 1rem 3rem;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.site-header, main, .settings, .site-footer, .skeleton { max-width: 820px; margin: 0 auto; }
+
+/* ---------- Loading ---------- */
+
+/* Across the very top of the window, above everything including the map. */
+.progress {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 3px;
+  z-index: 2000;
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  transition: opacity 260ms ease;
+}
+.progress .fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--hot-pink), var(--accent));
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
+  /* Slower on the way up than on the way out: the crawl should look like
+     progress, the finish like a snap. */
+  transition: width 320ms ease-out;
+}
+.progress:not(.is-busy) .fill { transition: width 160ms ease-in; }
+.progress:not(.is-busy) { opacity: 0; }
+
+/* Over a map, in the same place every time, so the eye learns where to look. */
+.map-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  z-index: 900;
+  background: color-mix(in srgb, #000 35%, transparent);
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+  transition: opacity 260ms ease;
+}
+.map-progress .fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 240ms ease-out;
+}
+.map-progress:not(.is-busy) { opacity: 0; }
+
+/* The page's own shape, greyed, until the first payload arrives. */
+.skeleton { padding-top: 0; }
+.skeleton .sk-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.skeleton .sk-row { display: flex; align-items: center; gap: 1.1rem; }
+.skeleton .sk-lines { flex: 1; display: grid; gap: 0.55rem; }
+
+/* Every grey block is the same animated fill. */
+.skeleton .sk-score,
+.skeleton .sk-lines i,
+.skeleton .sk-strip,
+.skeleton .sk-now span,
+.skeleton .sk-day {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--cool-slate) 22%, transparent) 25%,
+    color-mix(in srgb, var(--cool-slate) 42%, transparent) 45%,
+    color-mix(in srgb, var(--cool-slate) 22%, transparent) 65%
+  );
+  background-size: 300% 100%;
+  animation: sk-shimmer 1.5s ease-in-out infinite;
+}
+
+.skeleton .sk-score { width: 5.5rem; height: 4.2rem; border-radius: 12px; }
+.skeleton .sk-lines i { height: 1.35rem; }
+.skeleton .sk-lines i.short { width: 55%; height: 1rem; }
+.skeleton .sk-strip { height: 150px; margin-top: 1.1rem; border-radius: 10px; }
+.skeleton .sk-now { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.9rem 1rem; }
+.skeleton .sk-now span { height: 2.6rem; }
+.skeleton .sk-days { display: grid; gap: 1rem; }
+.skeleton .sk-day { height: 190px; border-radius: 12px; }
+
+@keyframes sk-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
+
+/* A shimmer is decoration; anyone who has asked for less motion gets none. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton .sk-score,
+  .skeleton .sk-lines i,
+  .skeleton .sk-strip,
+  .skeleton .sk-now span,
+  .skeleton .sk-day { animation: none; }
+  .progress .fill, .map-progress .fill { transition: none; }
+}
+
+.site-header { padding: 1.75rem 0 1.1rem; }
+.site-header h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+/* The event over the heading: an eyebrow, so it needs its own air rather than
+   sitting on the cap-line of the word below it. The trailing letter-space of
+   the last character would also push it out of line with "Weather". */
+.site-header h1 .event {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-indent: 0;
+  padding-right: 0.18em;
+  text-transform: uppercase;
+  color: var(--hot-pink);
+}
+/* Heading and place share a baseline; the place is the quieter of the two. */
+.site-header h1 .title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 0.5rem; }
+.site-header h1 .where {
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.site-header h1 .where:empty { display: none; }
+.site-header h1 .where::before { content: '· '; }
+
+.subtitle { margin: 0.4rem 0 0; color: var(--muted); font-size: 0.9rem; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.card h2 {
+  margin: 0 0 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+/* ---------- Warnings ---------- */
+
+.warnings:empty { display: none; }
+
+.warning {
+  border-left: 5px solid var(--level, #facc15);
+  background: var(--card);
+  border-radius: var(--radius);
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.warning h3 { margin: 0; font-size: 1rem; }
+.warning .when { color: var(--muted); font-size: 0.82rem; margin: 0.2rem 0 0.45rem; }
+.warning p { margin: 0.35rem 0 0; font-size: 0.9rem; }
+.warning .official { font-weight: 600; }
+.warning .instruction { color: var(--muted); }
+
+/* ---------- Fursuiting index (panel takes the score colour) ---------- */
+
+.fsi-card {
+  background: var(--fsi, var(--card));
+  border-color: color-mix(in srgb, var(--fsi, var(--border)) 70%, #000);
+  color: var(--ink, var(--text));
+}
+
+/* Everything inside inherits the contrast ink chosen in JS. */
+.fsi-card h2,
+.fsi-card .fsi-label,
+.fsi-card .fsi-advice,
+.fsi-card .strip-caption,
+.fsi-card .subscores .name,
+.fsi-card .subscores .num,
+.fsi-card .subscores-head,
+.fsi-card .explain,
+.fsi-card .explain summary,
+.fsi-card .timeline .hour::after {
+  color: var(--ink, var(--text));
+}
+
+.fsi-card h2 { margin: 0 0 0.1rem; opacity: 0.75; }
+.fsi-card h2 .at { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+.fsi-top { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; }
+
+.fsi-score { display: flex; align-items: baseline; font-variant-numeric: tabular-nums; }
+.fsi-score .value { font-size: 3.5rem; font-weight: 800; line-height: 1; }
+.fsi-score .max { font-size: 1rem; opacity: 0.7; margin-left: 0.1rem; }
+
+.fsi-text { flex: 1 1 15rem; }
+.fsi-label { margin: 0; font-size: 1.35rem; font-weight: 700; }
+.fsi-advice { margin: 0.1rem 0 0; font-size: 0.95rem; opacity: 0.9; }
+
+/* Best / worst stretch, side by side */
+.windows { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.5rem; margin-top: 0.9rem; }
+
+.windows .window {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: color-mix(in srgb, var(--ink, #000) 12%, transparent);
+  border-left: 3px solid currentColor;
+}
+.windows .window strong { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.85; }
+
+.strip-caption {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}
+
+/* Compact sub-scores: label, bar, number on one line each. */
+.subscores-head {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr 2.2rem;
+  gap: 0.5rem;
+  margin: 0.9rem 0 0.2rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.7;
+}
+.subscores-head span { grid-column: 3; text-align: right; }
+
+.subscores { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.subscores li { display: grid; grid-template-columns: 8.5rem 1fr 2.2rem; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+.subscores .name { opacity: 0.85; }
+.subscores .bar { background: color-mix(in srgb, var(--ink, #000) 18%, transparent); border-radius: 99px; height: 6px; overflow: hidden; }
+.subscores .fill { display: block; height: 100%; border-radius: 99px; background: currentColor; opacity: 0.85; }
+.subscores .num { text-align: right; font-variant-numeric: tabular-nums; opacity: 0.85; }
+
+.fsi-caps {
+  margin: 0.7rem 0 0;
+  padding: 0.45rem 0.65rem;
+  background: color-mix(in srgb, var(--ink, #000) 16%, transparent);
+  border-radius: 8px;
+  font-size: 0.83rem;
+  font-weight: 600;
+}
+
+.explain { margin-top: 0.8rem; font-size: 0.84rem; opacity: 0.85; }
+.explain summary { cursor: pointer; font-weight: 600; }
+.explain p { margin: 0.5rem 0 0; }
+
+/* ---------- Hourly timeline ---------- */
+
+.timeline {
+  /* Row metrics for the warning track, shared with the padding calc below so
+     the chart always reserves exactly as much space as it drew. */
+  --warn-row-h: 1.25rem;
+  --warn-gap: 3px;
+  --warn-top: 0.35rem;
+  --warn-space: calc(
+    var(--warn-top) + var(--warn-rows, 1) * var(--warn-row-h) +
+      (var(--warn-rows, 1) - 1) * var(--warn-gap) + 0.4rem
+  );
+  display: flex;
+  gap: 3px;
+  align-items: flex-end;
+  /* content-box, deliberately: `height` is the height of the BARS, and the
+     padding for hour labels, icons and warning rows is added around it. Under
+     the global border-box those paddings ate into this figure instead -- two
+     rows of warnings left the bars about 16px tall. */
+  box-sizing: content-box;
+  height: 150px;
+  overflow-x: auto;
+  padding-bottom: 1.5rem;
+}
+
+.timeline .hour {
+  flex: 1 1 22px;
+  /* Keep a near-empty day (a few forecast hours) from stretching one bar
+     across the whole card. */
+  max-width: 48px;
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.timeline .hour > .fsi-bar {
+  width: 100%;
+  background: var(--c);
+  border-radius: 4px 4px 0 0;
+  min-height: 3px;
+}
+
+/* An hour the forecast never reached. It keeps its slot so every day card
+   draws bars of the same width, and it is drawn as an empty outline: an
+   unfilled column reads as "no reading", where a short bar would read as a
+   score of nearly zero. */
+.timeline .hour.is-empty { cursor: default; }
+.timeline .hour.is-empty > .fsi-bar {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 5px,
+    color-mix(in srgb, var(--text) 7%, transparent) 5px 10px
+  );
+  border: 1px dashed color-mix(in srgb, var(--text) 18%, transparent);
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+}
+.timeline.is-pickable .hour.is-empty:hover { background: none; }
+
+/* Hours that have gone by stay on the chart for context, drained of colour so
+   the eye lands on what is still ahead. */
+.timeline .hour.is-past > .fsi-bar { filter: grayscale(1); opacity: 0.4; }
+.timeline .hour.is-past .wx { filter: grayscale(1); opacity: 0.35; }
+.timeline .hour.is-past::after { opacity: 0.45; }
+
+/* Where we are right now. The line sits at the current minute, not at the edge
+   of the hour, so it creeps across the bar it is in. */
+.timeline .now-line {
+  position: absolute;
+  top: -0.3rem;
+  bottom: -0.3rem;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--now);
+  pointer-events: none;
+  z-index: 4;
+}
+.timeline .now-line::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--now);
+}
+
+/* Any bar can be clicked for the conditions behind it, so the whole column
+   highlights -- the bar itself is often only a few pixels tall. */
+.timeline.is-pickable .hour { cursor: pointer; border-radius: 4px; }
+.timeline.is-pickable .hour:hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.timeline .hour:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.timeline .hour.is-selected {
+  background: color-mix(in srgb, var(--text) 16%, transparent);
+  outline: 2px solid var(--c);
+}
+
+.timeline .empty { color: var(--muted); font-size: 0.85rem; align-self: center; }
+
+.timeline .hour::after {
+  content: attr(data-label);
+  position: absolute;
+  bottom: -1.35rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.legend { margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; align-items: center; }
+.chip { width: 11px; height: 11px; border-radius: 3px; background: var(--c); display: inline-block; margin-right: 0.15rem; vertical-align: -1px; }
+
+/* ---------- Current conditions ---------- */
+
+.now { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.9rem 1rem; }
+.now .item .k { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.now .item .v { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.now .item .v small { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+
+/* ---------- Daily rows, each with its own hourly chart ---------- */
+
+.days { display: grid; gap: 1rem; }
+
+.day {
+  /* A grid item is as wide as its content demands unless told otherwise, and a
+     day's content is 24 bars with a 22px basis -- some 600px, which pushed the
+     whole page wider than a phone. Zero lets the bars shrink to fit instead. */
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem 0.85rem;
+  /* Lift each day off the card so five of them read as five blocks. */
+  background: color-mix(in srgb, var(--cool-slate) 10%, transparent);
+}
+
+.day header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 1rem;
+  /* A rule under the heading separates "which day" from "what happens". */
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+/* Day name over its date: the weekday is what you scan for, so it gets the
+   whole line rather than competing with the date on the same baseline. */
+.day .when { display: grid; }
+.day .name { font-weight: 700; font-size: 1.45rem; line-height: 1.1; letter-spacing: -0.01em; }
+.day .date { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.day .cond { font-size: 0.92rem; }
+.day .cond .icon { font-size: 1.3rem; vertical-align: -0.15rem; }
+.day .temps { font-variant-numeric: tabular-nums; font-size: 1.3rem; font-weight: 700; margin-left: auto; }
+.day .temps .lo { color: var(--muted); font-weight: 400; font-size: 1.05rem; }
+.day .meta { font-size: 0.8rem; color: var(--muted); flex-basis: 100%; }
+
+/* Own inset, like the index strip: the bars carry the score colours and need a
+   neutral backdrop to stay distinguishable. */
+.day .day-strip {
+  height: 130px;
+  padding: 0.5rem 0.5rem 1.35rem;
+  background: var(--inset);
+  border-radius: 8px;
+}
+
+.day .hilo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.1rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.6rem;
+}
+.day .hilo strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.day .hilo .best strong { color: #40ad3e; }
+.day .hilo .worst strong { color: var(--hot-pink); }
+.day .hilo .avg { margin-left: auto; }
+
+/* ---------- Radar ---------- */
+
+.map { height: 380px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); }
+.leaflet-container { border-radius: 10px; font: inherit; background: var(--bg); }
+
+.radar-controls { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin: 0.65rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.radar-controls label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+
+/* ---------- Footer / errors ---------- */
+
+.site-footer { margin-top: 1.5rem; font-size: 0.8rem; color: var(--muted); text-align: center; }
+.site-footer p { margin: 0.3rem 0; }
+.site-footer a { color: var(--electric-cyan); }
+.disclaimer { font-style: italic; }
+
+.error {
+  max-width: 820px;
+  margin: 1rem auto;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--hot-pink) 18%, var(--card));
+  border: 1px solid var(--hot-pink);
+}
+
+.stale { color: #f97316; }
+
+/* ---------- Busy notice ---------- */
+
+/* Amber, not pink: nothing is broken, the site is simply carrying a crowd. */
+.load-notice {
+  max-width: 820px;
+  margin: 0.9rem auto 0;
+  padding: 0.7rem 0.95rem;
+  font-size: 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--festival-amber);
+  background: color-mix(in srgb, var(--festival-amber) 12%, var(--card));
+}
+
+.load-notice.crowded {
+  border-color: #f97316;
+  background: color-mix(in srgb, #f97316 16%, var(--card));
+}
+
+/* ---------- Storage notice ---------- */
+
+/* Sits over the footer end of the page rather than across the middle: it is
+   information, not a gate, and the site stays usable while it is up. */
+.storage-notice {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 1500;
+  padding: 0.85rem 1rem calc(0.85rem + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--card) 92%, #000);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 35%);
+}
+
+.storage-notice p {
+  max-width: 820px;
+  margin: 0 auto;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.storage-notice .actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 0.6rem;
+}
+
+.storage-notice a { color: var(--electric-cyan); }
+
+.storage-notice button {
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font: inherit;
+  font-weight: 600;
+  padding: 0.4rem 1.1rem;
+  cursor: pointer;
+}
+
+.storage-notice button:hover { filter: brightness(1.08); }
+.storage-notice button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+@media (max-width: 480px) {
+  .fsi-score .value { font-size: 2.9rem; }
+  .subscores li,
+  .subscores-head { grid-template-columns: 6rem 1fr 2.2rem; }
+  .map { height: 300px; }
+}
+
+/* ---------- Language / unit toggles ---------- */
+
+.head-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+
+/* Allergy picker and language buttons share the top-right corner. They wrap
+   onto their own line on a narrow screen rather than squeezing the heading. */
+.head-controls { display: flex; align-items: center; gap: 0.5rem 0.7rem; flex-wrap: wrap; justify-content: flex-end; }
+
+.allergy-switch { display: inline-flex; align-items: center; gap: 0.35rem; }
+.allergy-switch .k { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.allergy-switch select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+}
+.allergy-switch select:hover { border-color: var(--muted); }
+.allergy-switch select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* The dark palette is the site's own; the menu itself is drawn by the browser,
+   so its options need telling too or they come up black on black. */
+.allergy-switch option { background: var(--card); color: var(--text); }
+
+.lang-switch, .unit-switch span[role="group"] {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.lang-switch button, .unit-switch button {
+  border: 0;
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+.lang-switch button:hover, .unit-switch button:hover { color: var(--text); }
+.lang-switch button.active, .unit-switch button.active { background: var(--accent); color: var(--accent-ink); }
+
+/* Units and clock change what the page shows, so they are controls, not small
+   print, and they sit in a band of their own between the content and the
+   credits. The rule above the footer is what separates the two -- a margin
+   alone left them reading as one block. */
+.settings {
+  margin-top: 1.75rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Two groups (temperature and clock), so it has to be able to wrap. */
+.unit-switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.6rem;
+  margin: 0;
+}
+.unit-switch .k { color: var(--muted); font-size: 0.8rem; }
+.unit-switch .k::after { content: ':'; }
+
+/* Inside the tinted panel the "now" outline must follow the contrast ink. */
+
+
+/* ---------- ICON model card ---------- */
+
+.model-tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
+
+.model-tabs button {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.model-tabs button:hover { color: var(--text); }
+.model-tabs button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.model-figure { position: relative; }
+#model-map { height: 330px; }
+
+.model-status { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--muted); }
+
+/* ---------- Model: forecast hours ---------- */
+
+.model-step { display: flex; align-items: flex-start; gap: 0.5rem; margin-top: 0.8rem; }
+
+/* Every hour at once, wrapped into a block. A scrolling row hid most of the
+   forecast behind a gesture; laid out as a grid the whole 48 hours is one
+   glance, and each cell keeps its place from one visit to the next. */
+.model-step .hours {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.55rem, 1fr));
+  gap: 3px;
+}
+
+.model-step .hours button {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  padding: 0.24rem 0.1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+}
+.model-step .hours button:hover { color: var(--text); border-color: var(--muted); }
+.model-step .hours button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+}
+
+.model-step .play {
+  flex: 0 0 auto;
+  width: 2.1rem;
+  height: 2.1rem;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.model-step .play:hover { border-color: var(--accent); }
+.model-step .play.is-playing { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+/* ---------- Model: the key ---------- */
+
+.model-legend { margin: 0.9rem 0 0; font-size: 0.82rem; color: var(--text); display: grid; gap: 0.7rem; }
+.model-legend .row { display: flex; align-items: flex-start; gap: 0.6rem; }
+.model-legend .name { flex: 0 0 7rem; padding-top: 1px; color: var(--muted); font-size: 0.78rem; }
+.model-legend .bar { flex: 1; min-width: 0; }
+
+/* The field is drawn in steps, so the key is too: one block per band, over the
+   same dark backdrop the map has, because the blocks carry the map's opacity. */
+.model-legend .swatches {
+  display: flex;
+  height: 14px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--inset);
+  border: 1px solid var(--border);
+}
+.model-legend .swatches span { flex: 1; min-width: 0; }
+.model-legend .swatches span + span { border-left: 1px solid rgb(0 0 0 / 22%); }
+.model-legend .scale { display: block; height: 14px; border-radius: 4px; border: 1px solid var(--border); }
+
+/* Numbers sit on the boundaries between blocks, so they are positioned rather
+   than laid out; the two at the ends are pulled inside the bar. */
+.model-legend .marks { position: relative; height: 1.15em; margin-top: 0.25rem; }
+.model-legend .marks span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.model-legend .marks span.first { transform: none; }
+.model-legend .marks span.last { transform: translateX(-100%); }
+
+/* Cloud eighths are names for the blocks themselves, not for their edges. */
+.model-legend .marks.cells { display: flex; }
+.model-legend .marks.cells span { position: static; flex: 1; transform: none; text-align: center; }
+
+.model-legend .note { color: var(--muted); font-size: 0.78rem; }
+.model-legend .note .arrow { color: var(--text); }
+
+@media (max-width: 480px) {
+  .day .temps { margin-left: 0; }
+  .day .hilo .avg { margin-left: 0; }
+  .fsi-score .value { font-size: 2.9rem; }
+}
+
+/* The hourly bars use the same colour scale as the panel tint, so a "Good"
+   green bar would vanish against a green panel. Give the chart its own neutral
+   inset so every band stays distinguishable. */
+.fsi-card .timeline {
+  background: var(--inset);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.6rem 0.55rem 1.5rem;
+  margin-top: 0.9rem;
+  height: 200px;
+}
+.fsi-card .timeline .hour::after { color: var(--muted); }
+
+/* ---------- conditions behind one bar, opened by clicking it ---------- */
+
+.hour-detail {
+  margin-top: 0.7rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  border-left: 4px solid var(--c, var(--accent));
+  background: color-mix(in srgb, var(--ink, #000) 14%, transparent);
+}
+
+.hour-detail .head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.7rem;
+  margin-bottom: 0.65rem;
+}
+.hour-detail .when { font-weight: 700; }
+.hour-detail .icon { font-size: 1.25rem; line-height: 1; }
+.hour-detail .cond { font-size: 0.9rem; opacity: 0.85; }
+.hour-detail .score {
+  margin-left: auto;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  background: var(--c);
+  color: var(--c-ink);
+}
+.hour-detail .close {
+  border: 0;
+  padding: 0 0.15rem;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.65;
+}
+.hour-detail .close:hover { opacity: 1; }
+
+.hour-detail .now { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: 0.55rem 1rem; }
+.hour-detail .now .item .v { font-size: 1rem; }
+.hour-detail .past-note { margin: 0.55rem 0 0; font-size: 0.78rem; opacity: 0.7; }
+
+/* Inside the tinted panel the field labels have to follow the contrast ink --
+   the muted grey they use elsewhere is unreadable on amber or green. */
+.fsi-card .hour-detail .now .item .k { color: var(--ink, var(--muted)); opacity: 0.7; }
+
+/* ---------- Weather icons above the bars ---------- */
+
+/* Reserve a row above the bars so the icons sit clear of the tallest hour.
+   These rules come last so they win over the earlier padding shorthands. */
+.timeline.has-icons { padding-top: 1.5rem; }
+.fsi-card .timeline.has-icons { padding-top: 1.6rem; }
+/* No height override needed: content-box means this padding is added around
+   the bars rather than taken out of them. */
+.day .day-strip.has-icons { padding-top: 1.45rem; }
+
+.timeline .wx {
+  position: absolute;
+  top: -1.35rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.88rem;
+  line-height: 1;
+  pointer-events: none;
+  filter: saturate(1.15);
+}
+
+/* ---------- easter egg ---------- */
+
+.egg-card { display: grid; justify-items: center; gap: 0.5rem; }
+.egg-card video { max-width: 100%; max-height: 340px; border-radius: 10px; }
+
+/* ---------- warnings marked on the index bars ---------- */
+
+.timeline { position: relative; }
+
+/* Warnings stack above the icon row, so make room for both. Measured from the
+   row count the chart actually drew (--warn-rows) rather than a few hard-coded
+   steps, which left a fourth row of warnings lying across the bars. More
+   specific than the earlier .has-icons rules on purpose -- those would win. */
+.timeline.has-warnings { padding-top: var(--warn-space); }
+.timeline.has-icons.has-warnings,
+.fsi-card .timeline.has-icons.has-warnings { padding-top: calc(var(--warn-space) + 1.5rem); }
+
+.warn-track {
+  position: absolute;
+  top: var(--warn-top);
+  left: 0.55rem;
+  right: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--warn-gap);
+}
+
+.warn-track .row { position: relative; height: var(--warn-row-h); }
+
+.warn-track .range {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  /* block, not flex: a label too long for its span has to degrade to an
+     ellipsis. Centring it would overflow BOTH edges and clip the leading "!"
+     glyph into an unreadable stub, so it starts at the left and truncates at
+     the end. The full wording stays in the title attribute. */
+  display: block;
+  line-height: 1.25rem;
+  text-align: left;
+  text-overflow: ellipsis;
+  border-radius: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  padding: 0 0.35rem;
+  color: #10161d;
+  background: var(--c, #fb8c00);
+}
+
+/* Too narrow to hold any wording: the band shrinks to a bare marker and its
+   label moves out to the side (see fitLabel in chart.js). */
+.warn-track .range.is-tight { padding: 0; }
+
+.warn-track .range-label {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  line-height: var(--warn-row-h);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--c, var(--text));
+  pointer-events: none;
+}
+
+/* More overlapping warnings than the chart will stack: the rest are counted
+   here and stay in full in the list above the chart. */
+.warn-track .range.more {
+  left: auto;
+  right: 0;
+  width: auto;
+  min-width: 1.9rem;
+  text-align: center;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  z-index: 1;
+}
+
+/* A Vorabinformation is not a warning in force -- red diagonal hatching keeps
+   the two from being read as the same thing. */
+.warn-track .range.hatched {
+  color: #fff;
+  background-color: color-mix(in srgb, var(--c, #e53935) 28%, transparent);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--c, #e53935) 0 5px,
+    transparent 5px 11px
+  );
+  border: 1px solid var(--c, #e53935);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 75%);
+}
+
+/* ---------- collapsed warnings summary ---------- */
+
+.warnings-summary { margin-bottom: 0.6rem; }
+
+.warnings-summary > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--level, #fb8c00);
+  background: var(--card);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.warnings-summary > summary::-webkit-details-marker { display: none; }
+.warnings-summary > summary::after {
+  content: '▾';
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 400;
+}
+.warnings-summary[open] > summary::after { content: '▴'; }
+.warnings-summary .count { color: var(--muted); font-weight: 400; }
+.warnings-summary .advance-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  color: #fff;
+  background-color: color-mix(in srgb, #e53935 30%, transparent);
+  background-image: repeating-linear-gradient(45deg, #e53935 0 4px, transparent 4px 9px);
+  border: 1px solid #e53935;
+}
+.warnings-summary .detail { margin-top: 0.6rem; display: grid; gap: 0.6rem; }
+
+/* An advance notice keeps the hatch on its full card too. */
+.warning.is-advance { border-left-style: dashed; }
+.warning .advance-note { font-weight: 700; color: #e53935; }
+
+/* ---------- API documentation page (/api-docs) ---------- */
+
+/* Prose, so it gets a wider measure than the dashboard's 820px of panels. */
+.docs .site-header, .docs-main, .docs .site-footer { max-width: 900px; margin: 0 auto; }
+
+.docs-main .card { padding: 1.35rem 1.5rem; }
+
+/* Section headings here are real headings, not the dashboard's tiny eyebrow
+   labels, so opt out of the uppercase .card h2 treatment. */
+.docs-main .card h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 0 0 0.7rem;
+}
+.docs-main .card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 1.4rem 0 0.4rem;
+  color: var(--accent);
+}
+.docs-main p { margin: 0.6rem 0; }
+/* Scoped to the whole page, not just main: the header subtitle has a link too,
+   and default browser blue is unreadable on this background. */
+.docs a { color: var(--electric-cyan); }
+
+.docs-toc { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; font-size: 0.88rem; font-weight: 600; }
+
+.docs-list { margin: 0.5rem 0; padding-left: 1.2rem; display: grid; gap: 0.4rem; }
+
+.docs-main code {
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.05rem 0.32rem;
+  font-size: 0.88em;
+  /* Short tokens like /api/v1/fsi stay on one line because they fit; only a
+     token too long for the column breaks. `nowrap` here made one long path
+     wider than a phone screen and pushed the whole page sideways. */
+  overflow-wrap: break-word;
+}
+
+.docs-main pre {
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.8rem 0.9rem;
+  /* Wide samples scroll inside their own box; the page never scrolls sideways. */
+  overflow-x: auto;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.docs-main pre code { background: none; border: 0; padding: 0; white-space: pre; }
+.docs-main .host { color: var(--festival-amber); }
+
+/* Tables get the same treatment: contained, so long rows cannot widen the page. */
+.table-scroll { overflow-x: auto; margin: 0.6rem 0; }
+
+.docs-table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+.docs-table th, .docs-table td {
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.docs-table th {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.docs-table tbody tr:last-child td { border-bottom: 0; }
+.docs-table td:last-child { white-space: nowrap; color: var(--muted); }
+
+.docs-main .note {
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--electric-cyan) 7%, transparent);
+  border-radius: 0 8px 8px 0;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+/* The storage table's last column is a sentence, not a value, so it may wrap. */
+.docs-table.wrap td:last-child { white-space: normal; }
+
+/* Unfilled operator text on the privacy pages -- unused while this instance's
+   controller block is complete, and kept for the next fork. Loud on purpose: a
+   missing Impressum is a legal gap, and it should be impossible to ship without
+   noticing it. */
+.todo {
+  display: block;
+  border-left: 3px solid var(--hot-pink);
+  background: color-mix(in srgb, var(--hot-pink) 12%, transparent);
+  border-radius: 0 8px 8px 0;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+.todo::before {
+  content: 'TO DO';
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--hot-pink);
+  margin-bottom: 0.2rem;
+}

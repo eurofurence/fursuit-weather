@@ -1,0 +1,6 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+requests>=2.32.0
+numpy>=1.26.0        # GRIB2 field decoding
+Pillow>=10.0.0       # renders model fields to PNG
+tzdata>=2024.1  # zoneinfo has no tz database on Windows or slim images

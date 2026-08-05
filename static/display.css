@@ -1,0 +1,437 @@
+/* ConOps wall display -- Fantastic Furry Festival palette.
+   Fixed to the viewport, high contrast, readable across a room. */
+
+:root {
+  --blue-black: #1a2039;
+  --midnight-teal: #222b54;
+  --midnight-green: #143b4d;
+  --cool-slate: #4f6374;
+  --cool-indigo: #e7e9f2;
+  --hot-pink: #f13ca3;
+  --electric-cyan: #b3ffff;
+  --festival-amber: #ffd633;
+
+  --bg: var(--blue-black);
+  --tile: var(--midnight-teal);
+  --inset: #171d33;
+  --border: color-mix(in srgb, var(--cool-slate) 45%, var(--midnight-teal));
+  --text: var(--cool-indigo);
+  --muted: color-mix(in srgb, var(--cool-indigo) 55%, var(--cool-slate));
+  --good: #40ad3e;
+  --bad: var(--hot-pink);
+  /* The "now" line on the chart. A plain red: hot pink is the worst band, and
+     DWD's severe red only appears as a wide hatched band, so a thin vertical
+     line is mistaken for neither. */
+  --now: #ff2f2f;
+}
+
+* { box-sizing: border-box; }
+
+/* `hidden` must beat any author `display:` rule on the same element. */
+[hidden] { display: none !important; }
+
+
+html, body { height: 100%; margin: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden; /* a wall display must never show a scrollbar */
+}
+
+.screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 1.2vh 1.2vw;
+  gap: 1vh;
+}
+
+.boot { padding: 2rem; color: var(--muted); font-size: 1.2rem; }
+
+/* ---------- bars ---------- */
+
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+
+.place { display: flex; align-items: baseline; gap: 0.7vw; font-size: clamp(1.1rem, 2.4vh, 2rem); font-weight: 650; }
+.place .what { font-weight: 650; }
+.event {
+  font-size: clamp(0.6rem, 1.5vh, 1rem);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hot-pink);
+}
+
+.clock { font-size: clamp(1.3rem, 3.4vh, 3rem); font-weight: 700; font-variant-numeric: tabular-nums; color: var(--electric-cyan); }
+
+.foot { font-size: clamp(0.75rem, 1.6vh, 1.1rem); color: var(--muted); }
+.foot .stale { color: var(--festival-amber); }
+
+/* ---------- grid ---------- */
+
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  /* The conditions strip sizes to its content -- it gained a heading that says
+     whether it is showing now or a picked hour. */
+  grid-template-rows: 0.85fr 2fr auto;
+  gap: 1vh 1vw;
+  /* The easter-egg tile is an extra, implicit row: let it hug its content
+     instead of taking an equal share and squashing the chart. */
+  grid-auto-rows: min-content;
+  min-height: 0; /* let children shrink instead of overflowing */
+}
+
+.tile {
+  background: var(--tile);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.4vh 1.1vw;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.tile h2 {
+  margin: 0 0 0.6vh;
+  font-size: clamp(0.72rem, 1.7vh, 1.15rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+
+.wide { grid-column: 1 / -1; }
+
+/* Headline score fills the left half of the top row. */
+.score-tile {
+  grid-column: 1 / -1;
+  background: var(--fsi, var(--tile));
+  border-color: color-mix(in srgb, var(--fsi, var(--border)) 70%, #000);
+  color: var(--ink, var(--text));
+}
+.score-tile h2 { color: var(--ink, var(--muted)); opacity: 0.75; }
+/* Fill the tile so the score sits centred rather than hugging the top. */
+.score-row { display: flex; align-items: center; gap: 1.4vw; min-height: 0; flex: 1; }
+.score-text { min-width: 0; }
+
+.score { display: flex; align-items: baseline; line-height: 1; }
+.score #score { font-size: clamp(3rem, 14vh, 11rem); font-weight: 800; }
+.score .of { font-size: clamp(1rem, 3vh, 2rem); opacity: 0.7; margin-left: 0.2rem; }
+
+/* The band name is the headline for staff glancing across the room. */
+.band {
+  font-size: clamp(1.3rem, 4.6vh, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.05;
+}
+.advice { margin: 0.6vh 0 0; font-size: clamp(0.8rem, 2.1vh, 1.6rem); opacity: 0.92; }
+
+/* ---------- warnings ---------- */
+
+#warnings { overflow: hidden; display: flex; flex-direction: column; gap: 0.7vh; }
+
+.warn {
+  border-left: 5px solid var(--c);
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  border-radius: 8px;
+  padding: 0.7vh 0.7vw;
+}
+.warn .head { font-size: clamp(0.85rem, 2.1vh, 1.6rem); font-weight: 700; }
+.warn .when { font-size: clamp(0.7rem, 1.5vh, 1.1rem); color: var(--muted); }
+
+.all-clear {
+  display: flex;
+  align-items: center;
+  gap: 0.6vw;
+  height: 100%;
+  color: var(--good);
+  font-size: clamp(1rem, 2.8vh, 2rem);
+  font-weight: 650;
+}
+
+/* ---------- hourly bars ---------- */
+
+.timeline {
+  /* Row metrics for the warning track, shared with the padding calc below so
+     the tile always reserves exactly as much room as the chart drew. */
+  --warn-row-h: 3.4vh;
+  --warn-gap: 0.4vh;
+  --warn-top: 0.7vh;
+  --warn-space: calc(
+    var(--warn-top) + var(--warn-rows, 1) * var(--warn-row-h) +
+      (var(--warn-rows, 1) - 1) * var(--warn-gap) + 0.6vh
+  );
+  flex: 1;
+  display: flex;
+  gap: 0.35vw;
+  align-items: flex-end;
+  padding: 3.4vh 0.5vw 7.4vh;
+  min-height: 0;
+  position: relative;
+  background: var(--inset);
+  border-radius: 10px;
+}
+
+.timeline .hour { flex: 1; position: relative; height: 100%; display: flex; align-items: flex-end; }
+.timeline .hour > .fsi-bar { width: 100%; background: var(--c); border-radius: 5px 5px 0 0; min-height: 4px; }
+.timeline .wx {
+  position: absolute;
+  top: -2.6vh;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(0.7rem, 1.9vh, 1.4rem);
+  line-height: 1;
+}
+/* Hours that have gone by stay on the board for context, drained of colour so
+   staff read the shift ahead, not the one behind. */
+.timeline .hour.is-past > .fsi-bar { filter: grayscale(1); opacity: 0.4; }
+.timeline .hour.is-past .wx { filter: grayscale(1); opacity: 0.35; }
+.timeline .hour.is-past::after { opacity: 0.45; }
+
+/* Where we are right now, at the current minute rather than the hour edge. */
+.timeline .now-line {
+  position: absolute;
+  top: -0.6vh;
+  bottom: -0.6vh;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--now);
+  pointer-events: none;
+  z-index: 4;
+}
+.timeline .now-line::before {
+  content: '';
+  position: absolute;
+  top: -0.5vh;
+  left: 50%;
+  width: 1.1vh;
+  height: 1.1vh;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: var(--now);
+}
+
+/* Any bar can be clicked for the conditions behind it, so the whole column
+   lights up -- in bad weather the bar itself is only a sliver. */
+.timeline.is-pickable .hour { cursor: pointer; border-radius: 5px; }
+.timeline.is-pickable .hour:hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.timeline .hour:focus-visible { outline: 2px solid var(--electric-cyan); outline-offset: 2px; }
+.timeline .hour.is-selected {
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+  outline: 2px solid var(--c);
+  border-radius: 5px;
+}
+
+.timeline .hour::after {
+  content: attr(data-label);
+  position: absolute;
+  bottom: -2.4vh;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: clamp(0.6rem, 1.5vh, 1rem);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.timeline .empty { color: var(--muted); align-self: center; }
+
+.legend { margin: 0.4vh 0 0; font-size: clamp(0.72rem, 1.7vh, 1.15rem); color: var(--muted); display: flex; gap: 0.9vw; align-items: center; flex-wrap: wrap; }
+.chip { width: 0.9em; height: 0.9em; border-radius: 3px; background: var(--c); display: inline-block; vertical-align: -0.1em; margin-right: 0.25em; }
+
+/* ---------- conditions strip ---------- */
+
+.conditions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5vh 1.5rem;
+}
+.conditions .item { display: flex; flex-direction: column; min-width: 5.5rem; }
+
+/* Showing a picked hour rather than the observation: say so, and tint the tile
+   so nobody walking past reads a forecast as the current weather. */
+.conditions-tile.is-picked { border-color: var(--electric-cyan); }
+.conditions-tile.is-picked h2 { color: var(--electric-cyan); }
+.conditions-tile .hint { text-transform: none; letter-spacing: 0; font-weight: 400; opacity: 0.75; }
+.conditions .k { font-size: clamp(0.7rem, 1.5vh, 1.05rem); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.conditions .v { font-size: clamp(1rem, 2.7vh, 2rem); font-weight: 650; font-variant-numeric: tabular-nums; }
+
+/* Narrow or portrait screens: stack into a single column. */
+@media (max-width: 900px), (orientation: portrait) {
+  .grid { grid-template-columns: repeat(2, 1fr); grid-template-rows: auto auto auto auto; }
+  .score-tile { grid-column: 1 / -1; }
+  .timeline { padding-bottom: 9vh; }
+  .conditions { flex-wrap: wrap; }
+  body { overflow: auto; }
+  .screen { height: auto; min-height: 100vh; }
+}
+
+/* ---------- best / worst stretches, marked on the bars ---------- */
+
+.ranges {
+  position: absolute;
+  left: 0.5vw;
+  right: 0.5vw;
+  bottom: 0.8vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4vh;
+  /* Annotation, not a control: never in the way of clicking a bar. */
+  pointer-events: none;
+}
+
+.ranges .row { position: relative; height: 4vh; }
+
+.ranges .range {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  /* block, not flex: a label too long for its band has to degrade to an
+     ellipsis. Centred, it overflowed both edges at once and read as nothing.
+     Anything that still will not fit is moved out beside the band by
+     fitLabel() in chart.js. */
+  display: block;
+  line-height: 4vh;
+  text-align: center;
+  text-overflow: ellipsis;
+  border-radius: 6px;
+  font-size: clamp(0.62rem, 1.5vh, 1.05rem);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  padding: 0 0.4vw;
+  color: #10161d;
+}
+.ranges .range.good { background: var(--good); }
+.ranges .range.bad { background: var(--bad); color: #fff; }
+/* Too narrow to hold any wording: the band stays as a marker of the hours it
+   covers, and its label sits alongside. */
+.ranges .range.is-tight { padding: 0; }
+
+.ranges .range-label {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  line-height: 4vh;
+  font-size: clamp(0.62rem, 1.5vh, 1.05rem);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ranges .range-label.good { color: var(--good); }
+.ranges .range-label.bad { color: var(--bad); }
+
+.legend-item { display: inline-flex; align-items: center; }
+.tz { text-transform: none; letter-spacing: 0; font-weight: 400; opacity: 0.75; }
+
+/* ---------- score numbers inside the bars ---------- */
+
+.timeline .hour > .fsi-bar { position: relative; }
+
+.fsi-value {
+  position: absolute;
+  top: 0.4vh;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: clamp(0.7rem, 1.8vh, 1.3rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+/* Too short a bar to sit inside: float the number just above it. */
+.fsi-value.outside { top: auto; bottom: calc(100% + 0.3vh); color: var(--text); }
+
+/* ---------- easter egg ---------- */
+
+.egg { align-items: center; padding-bottom: 0.6vh; }
+.egg h2 { margin-bottom: 0.3vh; }
+.egg video { max-height: 22vh; border-radius: 10px; align-self: center; }
+
+/* ---------- warnings marked on the index bars ---------- */
+
+/* Measured from the row count the chart actually drew rather than a few
+   hard-coded steps, which left a fourth row of warnings across the bars. */
+.timeline.has-warnings { padding-top: calc(var(--warn-space) + 3.4vh); }
+
+.warn-track {
+  position: absolute;
+  top: var(--warn-top);
+  left: 0.5vw;
+  right: 0.5vw;
+  display: flex;
+  flex-direction: column;
+  gap: var(--warn-gap);
+}
+
+.warn-track .row { position: relative; height: var(--warn-row-h); }
+
+.warn-track .range {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  /* See .ranges .range: block so a long label truncates instead of bleeding out
+     of both ends of a short band. */
+  display: block;
+  line-height: var(--warn-row-h);
+  text-align: center;
+  text-overflow: ellipsis;
+  border-radius: 6px;
+  font-size: clamp(0.62rem, 1.5vh, 1.05rem);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  padding: 0 0.4vw;
+  color: #10161d;
+  background: var(--c, #fb8c00);
+}
+.warn-track .range.is-tight { padding: 0; }
+
+.warn-track .range-label {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  line-height: var(--warn-row-h);
+  font-size: clamp(0.62rem, 1.5vh, 1.05rem);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--c, var(--text));
+}
+
+/* More overlapping warnings than the chart will stack. Rare, but the board has
+   no list to fall back on, so the count has to be visible. */
+.warn-track .range.more {
+  left: auto;
+  right: 0;
+  width: auto;
+  min-width: 3vw;
+  background: var(--tile);
+  color: var(--text);
+  border: 1px solid var(--border);
+  z-index: 1;
+}
+
+/* A Vorabinformation is not a warning in force -- red diagonal hatching so the
+   two are never read as the same thing. */
+.warn-track .range.hatched {
+  color: #fff;
+  background-color: color-mix(in srgb, var(--c, #e53935) 28%, transparent);
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--c, #e53935) 0 6px,
+    transparent 6px 13px
+  );
+  border: 1px solid var(--c, #e53935);
+  text-shadow: 0 1px 2px rgb(0 0 0 / 75%);
+}

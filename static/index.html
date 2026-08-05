@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eurofurence Weather: Main page</title>
+  <meta name="description" content="Fursuiting index, weather overview and rain radar for the EF30: in Hamburg, from DWD OpenData.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦊</text></svg>">
+  <link rel="stylesheet" href="/vendor/leaflet.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<!-- Up whenever the page is waiting on data. -->
+<div class="progress" id="progress" role="progressbar" aria-label="Loading" hidden><span class="fill"></span></div>
+
+<header class="site-header">
+  <div class="head-row">
+    <h1>
+      <span class="event" id="event-name">EF 30: Fantastic Furry Festival</span>
+      <span class="title">
+        <span data-i18n="app.heading">Weather</span>
+        <span class="where" id="where"></span>
+      </span>
+    </h1>
+    <div class="head-controls">
+      <!-- Which pollen the reader reacts to. Options are filled in from
+           /api/model, which knows the seasons: a species DWD is not publishing
+           today is still listed, but marked, rather than quietly missing. -->
+      <label class="allergy-switch" id="allergy-switch" hidden>
+        <span class="k" data-i18n="pollen.label">Allergy</span>
+        <select id="allergy-select"></select>
+      </label>
+      <div class="lang-switch" role="group" id="lang-switch" aria-label="Language">
+        <button type="button" data-lang="en">EN</button>
+        <button type="button" data-lang="de">DE</button>
+      </div>
+    </div>
+  </div>
+  <p class="subtitle" id="subtitle">Loading…</p>
+</header>
+
+<!-- Raised when the machine behind the site is carrying more people than it
+     comfortably can. Above the skeleton, so it explains a slow first load
+     rather than turning up after it. -->
+<p class="load-notice" id="load-notice" role="status" hidden></p>
+
+<!-- Stands in for the page until the first payload lands, so the first thing a
+     visitor sees is the shape of what is coming rather than an empty screen. -->
+<div class="skeleton" id="skeleton" aria-hidden="true">
+  <div class="sk-card sk-index">
+    <div class="sk-row"><span class="sk-score"></span><span class="sk-lines"><i></i><i class="short"></i></span></div>
+    <div class="sk-strip"></div>
+  </div>
+  <div class="sk-card sk-now"><span></span><span></span><span></span><span></span></div>
+  <div class="sk-card sk-days"><div class="sk-day"></div><div class="sk-day"></div></div>
+</div>
+
+<main id="main" hidden>
+  <section id="warnings" class="warnings" aria-label="Weather warnings"></section>
+
+  <!-- Fursuiting index: the panel itself is tinted with the current score -->
+  <section class="card fsi-card" id="fsi-card" aria-labelledby="fsi-heading">
+    <div class="fsi-top">
+      <div class="fsi-score" id="fsi-score"><span class="value">–</span><span class="max">/10</span></div>
+      <div class="fsi-text">
+        <h2 id="fsi-heading"><span data-i18n="fsi.heading">Fursuiting Index</span> <span class="at" id="fsi-time"></span></h2>
+        <p class="fsi-label" id="fsi-label"></p>
+        <p class="fsi-advice" id="fsi-advice"></p>
+      </div>
+    </div>
+
+    <div class="timeline" id="timeline" role="group" aria-label="Hourly fursuiting index for the next 24 hours"></div>
+    <p class="strip-caption" data-i18n="fsi.next24">Next 24 hours</p>
+    <!-- Filled in when a bar is clicked: the conditions behind that hour. -->
+    <div class="hour-detail" id="hour-detail" hidden></div>
+
+    <p class="subscores-head"><span data-i18n="fsi.scoreHeader">Score</span></p>
+    <ul class="subscores" id="subscores"></ul>
+    <p class="fsi-caps" id="fsi-caps" hidden></p>
+    <details class="explain">
+      <summary data-i18n="fsi.explainSummary">How is this calculated?</summary>
+      <p data-i18n="fsi.explainBody"></p>
+    </details>
+  </section>
+
+  <!-- Current conditions -->
+  <section class="card" aria-labelledby="now-heading">
+    <h2 id="now-heading" data-i18n="now.heading">Right now</h2>
+    <div class="now" id="now"></div>
+  </section>
+
+  <!-- Daily overview -->
+  <section class="card" aria-labelledby="daily-heading">
+    <h2 id="daily-heading" data-i18n="days.heading">Daily forecast</h2>
+    <div class="days" id="days"></div>
+    <p class="legend" id="legend-days"></p>
+  </section>
+
+  <!-- Radar -->
+  <section class="card" aria-labelledby="radar-heading">
+    <h2 id="radar-heading" data-i18n="radar.heading">Rain radar</h2>
+    <div id="map" class="map"></div>
+    <p class="radar-controls">
+      <label><input type="checkbox" id="toggle-warnings"> <span data-i18n="radar.showWarnings">Show warning areas</span></label>
+      <span class="radar-status" id="radar-status"></span>
+    </p>
+  </section>
+
+  <!-- Shown only when the index lands on one very specific score -->
+  <section class="card egg-card" id="egg" hidden>
+    <h2>6.7</h2>
+    <video id="egg-video" src="/media/ravi_67.mp4" autoplay muted loop playsinline></video>
+  </section>
+
+  <!-- ICON model maps -->
+  <section class="card" aria-labelledby="model-heading">
+    <h2 id="model-heading" data-i18n="model.heading">Model maps (ICON)</h2>
+    <div class="model-tabs" id="model-tabs" role="tablist"></div>
+    <div class="model-figure">
+      <div id="model-map" class="map"></div>
+      <p class="model-status" id="model-status"></p>
+    </div>
+    <div class="model-step">
+      <button type="button" class="play" id="model-play" aria-pressed="false"></button>
+      <!-- One button per forecast hour, all of them on screen at once: a slider
+           gave no way to see, or land on, the hour you actually wanted. -->
+      <div class="hours" id="model-hours" role="group" aria-label="Forecast hour"></div>
+    </div>
+    <p class="model-legend" id="model-legend"></p>
+  </section>
+</main>
+
+<p id="error" class="error" hidden></p>
+
+<!-- Display settings, not small print: they change what the page shows, so they
+     sit with the page rather than buried among the credits. -->
+<section class="settings" aria-label="Display settings">
+  <p class="unit-switch">
+    <!-- The colons are drawn by CSS: as text nodes they became flex items of
+         their own and sat a whole gap away from the word they belong to. -->
+    <span class="k" data-i18n="footer.units">Units</span>
+    <span role="group" id="unit-switch" aria-label="Temperature unit">
+      <button type="button" data-unit="C">°C</button>
+      <button type="button" data-unit="F">°F</button>
+    </span>
+    <span class="k" data-i18n="footer.clock">Time</span>
+    <span role="group" id="clock-switch" aria-label="Clock format">
+      <button type="button" data-clock="24">24 h</button>
+      <button type="button" data-clock="12">12 h</button>
+    </span>
+  </p>
+</section>
+
+<footer class="site-footer">
+  <p id="footer-meta"></p>
+  <p>
+    <span data-i18n="footer.data">Weather data</span>:
+    <a href="https://opendata.dwd.de" rel="noopener">Deutscher Wetterdienst (DWD)</a>.
+    <span data-i18n="footer.mapData">Map data</span> ©
+    <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a>, © CARTO.
+    · <a href="/display" data-i18n="footer.display">ConOps display</a>
+    · <a href="/api-docs" data-i18n="footer.api">Weather API</a>
+    <!-- href is set in JS: the page exists in both languages. Alongside the
+         other links, not alone on a line of its own below them. -->
+    · <a href="/privacy" class="privacy-link" data-i18n="footer.privacy">Privacy</a>
+  </p>
+  <p class="disclaimer" data-i18n="footer.disclaimer"></p>
+</footer>
+
+<!-- Storage notice. Not a consent gate: the site sets no cookies and stores
+     only the settings the visitor chose, so there is nothing to ask permission
+     for -- but people deserve to be told, and to be able to read the detail. -->
+<aside class="storage-notice" id="storage-notice" hidden>
+  <p data-i18n="notice.text"></p>
+  <p class="actions">
+    <a href="/privacy" class="privacy-link" data-i18n="notice.details">What is stored</a>
+    <button type="button" id="notice-ok" data-i18n="notice.ok">Got it</button>
+  </p>
+</aside>
+
+<script src="/vendor/leaflet.js"></script>
+<script src="/i18n.js"></script>
+<script src="/loading.js"></script>
+<script src="/chart.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

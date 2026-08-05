@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eurofurence Weather: Privacy</title>
+  <meta name="description" content="What the Eurofurence weather site stores, what it does not, and who else sees your address when you open it.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦊</text></svg>">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="docs">
+<header class="site-header">
+  <h1>
+    <span class="event">EF 30: Fantastic Furry Festival</span>
+    Privacy
+  </h1>
+  <p class="subtitle">
+    The short version: this site sets no cookies, runs no analytics, has no
+    accounts and sells nothing. The long version is below, because "we value
+    your privacy" is not information.
+    <a href="/datenschutz" hreflang="de" lang="de">Diese Seite auf Deutsch</a>
+  </p>
+</header>
+
+<main class="docs-main">
+
+  <nav class="card docs-toc" aria-label="Contents">
+    <a href="#device">On your device</a>
+    <a href="#server">On the server</a>
+    <a href="#others">Who else sees you</a>
+    <a href="#consent">Why there is no consent box</a>
+    <a href="#rights">Your rights</a>
+    <a href="#contact">Who runs this</a>
+  </nav>
+
+  <section class="card" id="device">
+    <h2>What is stored on your device</h2>
+    <p>
+      <strong>This site sets no cookies.</strong> It keeps these values in your
+      browser's local storage so the choices you made survive a reload. That is
+      the whole list: none of it is sent back to the server, and none of it can
+      follow you to another site.
+    </p>
+    <table class="docs-table wrap">
+      <thead>
+        <tr><th>Key</th><th>Holds</th><th>Written when</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>efw.lang</code></td><td><code>en</code> or <code>de</code></td><td>You press a language button</td></tr>
+        <tr><td><code>efw.unit</code></td><td><code>C</code> or <code>F</code></td><td>You switch the temperature unit</td></tr>
+        <tr><td><code>efw.clock</code></td><td><code>24</code> or <code>12</code></td><td>You switch the clock format</td></tr>
+        <tr><td><code>efw.allergy</code></td><td>a pollen species, e.g. <code>birch</code></td><td>You pick an allergy. Removed again if you set it back to “None”</td></tr>
+        <tr><td><code>efw.noticeSeen</code></td><td><code>1</code></td><td>You dismiss the notice at the bottom</td></tr>
+      </tbody>
+    </table>
+    <p>
+      No identifier is generated for you. Cloudflare, which carries the traffic,
+      may set a cookie of its own — see <a href="#others">below</a>.
+    </p>
+    <p>
+      Alongside those settings the browser keeps an <strong>offline copy</strong>
+      of the page, its scripts and the weather data you last loaded, so the site
+      still opens on a crowded convention network — and so that opening it costs
+      the little machine behind it nothing. That copy holds only what you had
+      already downloaded, it is never sent anywhere, and it is read by nobody but
+      your own browser.
+    </p>
+    <p>
+      Clearing site data for this domain removes all of it — settings and offline
+      copy alike — and costs you nothing but your preferences.
+    </p>
+  </section>
+
+  <section class="card" id="server">
+    <h2>What the server holds</h2>
+    <p>
+      Your browser has to tell the server its IP address to receive a reply at
+      all. Here is everything that happens with it:
+    </p>
+    <ul class="docs-list">
+      <li>
+        <strong>Rate limiting.</strong> The address is held in memory for one
+        minute, so a runaway script cannot crowd out everyone else. It is never
+        written to disk.
+      </li>
+      <li>
+        <strong>The visitor count.</strong> Not the address itself, but an
+        unreadable hash of it — see below.
+      </li>
+      <li>
+        <strong>No request log.</strong> The access log, which would record a
+        line per request including your address, is switched off. The application
+        log keeps errors and the occasional "someone is hammering the API" line,
+        and that line names the hash rather than the address.
+      </li>
+    </ul>
+    <p>
+      The <strong>count</strong> exists so the page can admit the machine is busy
+      instead of leaving you at a spinner — this site runs on a single computer
+      at home. Your address is hashed with a random secret that is regenerated
+      every time the server starts, so the same visitor gets a different hash
+      after a restart and the two cannot be matched. The hash cannot be turned
+      back into an address, it is dropped once you have been quiet for a few
+      minutes, and it is used for exactly one thing: taking the length of the
+      list. The total is public at <a href="/api/load"><code>/api/load</code></a>
+      as a load signal rather than an audience figure — everyone behind one
+      shared network counts once, and a crawler counts as a person.
+    </p>
+    <p class="note">
+      There is no database, no profile and no analytics store. Nothing about a
+      visit outlives the process it happened in: a restart wipes all of it. The
+      remaining log is capped at 30 MB and rolls over.
+    </p>
+  </section>
+
+  <section class="card" id="others">
+    <h2>Who else sees your address</h2>
+    <p>
+      Three parties see your IP address in the course of loading this page. None
+      is under this site's control, and each has its own policy:
+    </p>
+    <ul class="docs-list">
+      <li>
+        <strong>Cloudflare</strong> carries all traffic through a tunnel and
+        terminates the encryption, so it sees every request, and it may set a
+        cookie of its own (typically <code>__cf_bm</code>) to tell automated
+        traffic from people. That storage is Cloudflare's, not this site's.
+        Cloudflare Inc. is based in the United States;
+        <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">their privacy policy</a>
+        applies to it.
+      </li>
+      <li>
+        <strong>CARTO</strong> (<code>basemaps.cartocdn.com</code>) serves the map
+        background on the radar and model maps.
+      </li>
+      <li>
+        <strong>Deutscher Wetterdienst</strong> (<code>maps.dwd.de</code>) serves
+        the radar and warning tiles.
+      </li>
+    </ul>
+    <p>
+      Your browser fetches those tiles directly; everything else — the map
+      library, the styles, the scripts, the video — comes from this machine, and
+      the weather data itself is fetched by the server from DWD OpenData rather
+      than by you. There are no web fonts, no advertising, no social buttons and
+      no embedded third-party content beyond those tiles.
+    </p>
+  </section>
+
+  <section class="card" id="consent">
+    <h2>Why there is no consent box</h2>
+    <p>
+      Because there is nothing to consent to. A consent banner is for storage on
+      your device that you did not ask for — tracking, advertising, analytics —
+      and there is none here. What this site stores are the settings you chose
+      yourself, the "strictly necessary for a service you requested" case that
+      German
+      <abbr title="Telekommunikation-Digitale-Dienste-Datenschutz-Gesetz">TDDDG</abbr>
+      § 25 (2) exempts. Asking permission for that would be theatre, and would
+      train you to click through the banners that matter. So you get a notice
+      instead of a gate: shown once, dismissible, and the page works either way.
+    </p>
+    <p>
+      The legal basis for the two things that do touch an address — the rate
+      limit and the visitor count — is legitimate interest, GDPR Art. 6 (1) (f):
+      keeping a small self-hosted site reachable and telling you honestly when it
+      is struggling.
+    </p>
+  </section>
+
+  <section class="card" id="rights">
+    <h2>Your rights</h2>
+    <p>
+      Under the GDPR you may ask for access to the data held about you, its
+      correction or erasure, a restriction on its use, a copy of it, or object to
+      it being processed at all (Art. 15–21). Write to the address below. You may
+      also complain to a data protection supervisory authority in the country
+      where you live or work.
+    </p>
+    <p>
+      In practice there will be very little to hand over, and that is the point:
+      nothing here is stored under your name, and neither the address in memory
+      nor the visitor hash can be traced back to you — not even by the person
+      running the site.
+    </p>
+  </section>
+
+  <section class="card" id="contact">
+    <h2>Who runs this</h2>
+    <p>
+      An unofficial community project for the convention, run privately by one
+      person. Controller within the meaning of GDPR Art. 4 (7), and Impressum
+      under <abbr title="Digitale-Dienste-Gesetz">DDG</abbr> § 5:
+    </p>
+    <address>
+      O. Börner<br>
+      Wilhelm-Stolze-Str. 30<br>
+      10249 Berlin<br>
+      <a href="mailto:olaf.boerner3@gmail.com">olaf.boerner3@gmail.com</a>
+    </address>
+    <p>
+      Weather data © Deutscher Wetterdienst, used under GeoNutzV. This is not an
+      official DWD service and not an official Eurofurence one.
+    </p>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <p>
+    <a href="/">← Weather overview</a> ·
+    <a href="/datenschutz" hreflang="de" lang="de">Deutsch</a> ·
+    <a href="/api-docs">Weather API</a> ·
+    <a href="/display">ConOps display</a>
+  </p>
+  <p>
+    Weather data: <a href="https://opendata.dwd.de" rel="noopener">Deutscher Wetterdienst (DWD)</a>.
+    Built by <strong>laffiesphere</strong> ·
+    <a href="https://github.com/laffiie/EurofurenceWeather" rel="noopener">source</a>.
+  </p>
+</footer>
+</body>
+</html>

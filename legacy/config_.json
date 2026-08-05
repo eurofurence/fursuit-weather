@@ -1,0 +1,67 @@
+{
+  "location": {
+    "name": "Hamburg, CHH",
+    "latitude": 53.561337,
+    "longitude": 9.986310,
+    "timezone": "Europe/Berlin",
+    "elevation": 16
+  },
+  "dwd_settings": {
+    "station_id": "10147",
+    "use_forecast": true,
+    "forecast_hours": 3,
+    "warning_areas": ["Hamburg", "Schleswig-Holstein"]
+  },
+  "fsi_thresholds": {
+    "excellent": 8.0,
+    "good": 6.0,
+    "fair": 4.0,
+    "poor": 2.0
+  },
+  "scoring_weights": {
+    "thermal_humidity": 0.40,
+    "precipitation": 0.35,
+    "wind": 0.15,
+    "stickiness": 0.10
+  },
+  "thermal_mapping": {
+    "optimal_max": 18.0,
+    "good_max": 20.0,
+    "fair_max": 22.0,
+    "poor_max": 24.0,
+    "bad_max": 26.0
+  },
+  "wind_penalties": {
+    "calm_wind_threshold": 1.0,
+    "calm_penalty": 2.0,
+    "duration_penalty_threshold": 60,
+    "max_duration_penalty": 3.0
+  },
+  "precipitation_settings": {
+    "matsch_threshold": 2.0,
+    "matsch_penalty": 2.0,
+    "heavy_rain_threshold": 10.0
+  },
+  "warning_caps": {
+    "thunderstorm_level2": 0.0,
+    "thunderstorm_level1": 2.0,
+    "heavy_rain": 2.0,
+    "heat_warning": 2.0,
+    "storm_8bft": 1.0,
+    "storm_7bft": 3.0
+  },
+  "solar_adjustments": {
+    "midday_hours": [11, 12, 13],
+    "midday_adjustment": 4.0,
+    "active_hours": [10, 14],
+    "active_adjustment": 3.0,
+    "light_hours": [9, 15],
+    "light_adjustment": 2.0
+  },
+  "output": {
+    "show_details": true,
+    "json_export": true,
+    "round_precision": 0.5,
+    "language": "de"
+  }
+}

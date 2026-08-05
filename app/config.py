@@ -1,0 +1,237 @@
+"""Application configuration.
+
+Values come from ``config.json`` (bundled, overridable via ``EFW_CONFIG``) and
+may be overridden individually by environment variables so the container can be
+retuned without rebuilding the image.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
+
+
+@dataclass
+class Event:
+    """The convention edition this instance is running for."""
+
+    name: str = "Eurofurence 30: Fantastic Furry Festival"
+    short_name: str = "EF30"
+
+
+@dataclass
+class Location:
+    name: str = "Hamburg"
+    latitude: float = 53.561337
+    longitude: float = 9.986310
+    timezone: str = "Europe/Berlin"
+    elevation: float = 16.0
+
+
+@dataclass
+class DWDSettings:
+    #: MOSMIX / POI station. 10147 = Hamburg-Fuhlsbuettel.
+    station_id: str = "10147"
+    #: DWD "Warncell" ids to watch. 102000000 = Hansestadt Hamburg.
+    warncells: List[str] = field(default_factory=lambda: ["102000000"])
+    #: WMS layer used for the radar overlay.
+    radar_layer: str = "dwd:Niederschlagsradar"
+    warnings_layer: str = "dwd:Warnungen_Gemeinden"
+
+
+@dataclass
+class FSIConfig:
+    weights: Dict[str, float] = field(
+        default_factory=lambda: {
+            "thermal_humidity": 0.50,
+            "precipitation": 0.30,
+            "wind": 0.12,
+            "stickiness": 0.08,
+        }
+    )
+    #: Effective wet-bulb temperature (deg C) at the upper edge of each band.
+    thermal_mapping: Dict[str, float] = field(
+        default_factory=lambda: {
+            "optimal_max": 15.0,
+            "good_max": 17.0,
+            "fair_max": 19.0,
+            "poor_max": 21.0,
+            "bad_max": 23.0,
+        }
+    )
+    thresholds: Dict[str, float] = field(
+        default_factory=lambda: {"excellent": 8.5, "good": 7.0, "fair": 5.0, "poor": 3.0}
+    )
+    #: Hard ceilings on the total score by effective wet-bulb temperature.
+    #: A weighted average would otherwise let "it is not raining" (10/10) pull a
+    #: dangerously hot hour up into the middle of the scale.
+    heat_caps: Dict[str, float] = field(
+        default_factory=lambda: {
+            "caution_wetbulb": 24.0,
+            "caution_cap": 3.0,
+            "danger_wetbulb": 27.0,
+            "danger_cap": 1.0,
+        }
+    )
+
+
+@dataclass
+class APISettings:
+    """Public API behaviour."""
+
+    #: Requests per minute per client for /api/*. The data is cached, so this
+    #: only exists to stop one consumer crowding out the site and the board.
+    rate_limit_per_minute: int = 100
+    #: Set false to serve only the pages and the internal endpoints.
+    public_api_enabled: bool = True
+
+
+@dataclass
+class CapacitySettings:
+    """When to tell visitors the site is busy.
+
+    This machine is one home PC on a home uplink, so the honest thing to do
+    under a rush is say so. The counting behind it is cookie-free; see
+    ``app/presence.py``.
+
+    The defaults are a starting guess for a single container: watch
+    ``/api/load`` during a busy hour and move them to where the site actually
+    starts feeling slow, which depends far more on the uplink than on the CPU.
+    """
+
+    #: Set false to count nothing and show nothing.
+    enabled: bool = True
+    #: How long after their last request someone still counts as "here". Must
+    #: comfortably exceed the frontend's five-minute refresh, or an open tab
+    #: would flicker in and out of the count between polls.
+    active_window_seconds: int = 360
+    #: Visitors at which the page mentions it is busy...
+    busy_at: int = 40
+    #: ...and at which it warns that things will be slow.
+    crowded_at: int = 80
+
+
+@dataclass
+class PollenSettings:
+    """The ICON-ART pollen forecast layer.
+
+    DWD publishes concentrations in grains/m3, not severity levels, so the bands
+    the map and its key are drawn in are this site's own. They are here rather
+    than in the code so an instance can retune them without a rebuild -- and so
+    it is obvious that they are a judgement call, not something official.
+    """
+
+    #: Set false to drop the allergen picker and the pollen map entirely.
+    enabled: bool = True
+    #: species -> [moderate, high, very high] lower bounds in grains/m3.
+    #: Anything absent falls back to app/dwd/pollen.py's defaults.
+    thresholds: Dict[str, List[float]] = field(default_factory=dict)
+
+
+@dataclass
+class CacheTTL:
+    """Seconds to keep each upstream response. DWD publishes:
+    POI hourly, MOSMIX_L every ~6h, warnings every few minutes."""
+
+    observations: int = 600
+    forecast: int = 1800
+    warnings: int = 180
+
+
+@dataclass
+class Settings:
+    event: Event = field(default_factory=Event)
+    location: Location = field(default_factory=Location)
+    dwd: DWDSettings = field(default_factory=DWDSettings)
+    fsi: FSIConfig = field(default_factory=FSIConfig)
+    api: APISettings = field(default_factory=APISettings)
+    capacity: CapacitySettings = field(default_factory=CapacitySettings)
+    pollen: PollenSettings = field(default_factory=PollenSettings)
+    cache: CacheTTL = field(default_factory=CacheTTL)
+    forecast_hours: int = 120
+    request_timeout: int = 20
+    user_agent: str = "EurofurenceWeather/2.0 (+https://github.com/laffiie/EurofurenceWeather)"
+
+
+def _merge(target: Any, data: Dict[str, Any]) -> None:
+    """Shallow-merge a dict of overrides onto a dataclass instance."""
+    for key, value in data.items():
+        if not hasattr(target, key):
+            logger.warning("Ignoring unknown config key %r", key)
+            continue
+        current = getattr(target, key)
+        if isinstance(current, dict) and isinstance(value, dict):
+            current.update(value)
+        else:
+            setattr(target, key, value)
+
+
+def load_settings(path: str | os.PathLike[str] | None = None) -> Settings:
+    settings = Settings()
+
+    config_path = Path(path or os.environ.get("EFW_CONFIG") or DEFAULT_CONFIG_PATH)
+    if config_path.exists():
+        try:
+            raw = json.loads(config_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            logger.error("Could not read config %s: %s -- using defaults", config_path, exc)
+            raw = {}
+        _merge(settings.event, raw.get("event", {}))
+        _merge(settings.location, raw.get("location", {}))
+        _merge(settings.dwd, raw.get("dwd", {}))
+        _merge(settings.fsi, raw.get("fsi", {}))
+        _merge(settings.api, raw.get("api", {}))
+        _merge(settings.capacity, raw.get("capacity", {}))
+        _merge(settings.pollen, raw.get("pollen", {}))
+        _merge(settings.cache, raw.get("cache", {}))
+        for key in ("forecast_hours", "request_timeout"):
+            if key in raw:
+                setattr(settings, key, raw[key])
+        logger.info("Loaded config from %s", config_path)
+    else:
+        logger.warning("Config %s not found -- using built-in defaults", config_path)
+
+    # Environment overrides (handy for docker-compose).
+    if station := os.environ.get("EFW_STATION_ID"):
+        settings.dwd.station_id = station
+    if cells := os.environ.get("EFW_WARNCELLS"):
+        settings.dwd.warncells = [c.strip() for c in cells.split(",") if c.strip()]
+    if name := os.environ.get("EFW_LOCATION_NAME"):
+        settings.location.name = name
+    if event := os.environ.get("EFW_EVENT_NAME"):
+        settings.event.name = event
+    if hours := os.environ.get("EFW_FORECAST_HOURS"):
+        settings.forecast_hours = int(hours)
+    if limit := os.environ.get("EFW_RATE_LIMIT"):
+        settings.api.rate_limit_per_minute = int(limit)
+    if busy := os.environ.get("EFW_BUSY_AT"):
+        settings.capacity.busy_at = int(busy)
+    if crowded := os.environ.get("EFW_CROWDED_AT"):
+        settings.capacity.crowded_at = int(crowded)
+
+    # Crowded below busy is a transposition, not an opinion: taken literally the
+    # milder notice could never appear, since the louder one wins first.
+    if settings.capacity.crowded_at < settings.capacity.busy_at:
+        logger.warning(
+            "capacity.crowded_at (%d) is below busy_at (%d); reading them the other "
+            "way round",
+            settings.capacity.crowded_at,
+            settings.capacity.busy_at,
+        )
+        settings.capacity.busy_at, settings.capacity.crowded_at = (
+            settings.capacity.crowded_at,
+            settings.capacity.busy_at,
+        )
+
+    return settings
+
+
+settings = load_settings()

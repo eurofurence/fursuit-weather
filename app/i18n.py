@@ -1,0 +1,148 @@
+"""English and German strings for everything the API returns.
+
+The frontend owns its own static labels; this module covers the text that is
+generated from data -- index bands, score reasoning, weather codes and warning
+types -- so a language switch only needs one round trip to ``/api/summary``.
+"""
+
+from __future__ import annotations
+
+from typing import Dict
+
+LANGUAGES = ("en", "de")
+DEFAULT_LANGUAGE = "en"
+
+
+def normalise(lang: str | None) -> str:
+    lang = (lang or "").lower()[:2]
+    return lang if lang in LANGUAGES else DEFAULT_LANGUAGE
+
+
+STRINGS: Dict[str, Dict[str, str]] = {
+    "en": {
+        # Index bands
+        "band.excellent": "Excellent",
+        "band.good": "Good",
+        "band.fair": "Fair",
+        "band.poor": "Poor",
+        "band.bad": "Bad",
+        "band.nodata": "No data",
+        "advice.excellent": "Perfect suiting conditions. Touch grass and enjoy the festival!",
+        "advice.good": "Comfortable in suit! Still take water with you.",
+        "advice.fair": "Suitable. Plan breaks and stay hydrated.",
+        "advice.poor": "Hard going. Keep it short, find shade, bring a handler.",
+        "advice.bad": "Not recommended. Stay out of suit or stick to indoor areas.",
+        "advice.nodata": "No temperature reading available for this hour.",
+        # Sub-scores
+        "sub.thermal": "Temperature",
+        "sub.precipitation": "Rain",
+        "sub.wind": "Wind",
+        "sub.stickiness": "Humidity",
+        # Reasoning fragments
+        "reason.heat": "Heat",
+        "reason.rain": "Rain",
+        "reason.wind": "Wind",
+        "reason.humidity": "Humidity",
+        "reason.wetbulb": "effective wet-bulb {value} °C",
+        "reason.sunload": "+{value} °C sun load",
+        "reason.nowind": "no wind, -2",
+        "reason.rainrate": "{rate} mm/h, {prob}% chance",
+        "reason.wetground": "wet ground, -2",
+        "reason.thunder_cap": "thunderstorm, capped at 2",
+        "reason.windspeed": "{value} m/s",
+        "reason.gusts_severe": "severe gusts, capped at 1",
+        "reason.gusts_strong": "strong gusts, capped at 3",
+        "reason.dewpoint": "dew point {value} °C",
+        "reason.nodata_wind": "no data, assumed light",
+        # Caps
+        "cap.danger": "Dangerous heat",
+        "cap.caution": "High heat load",
+        "cap.heat_detail": "{note}: effective wet-bulb {value} °C caps the index at {cap}",
+        # Warning kinds
+        "kind.thunderstorm": "Thunderstorm",
+        "kind.wind": "Wind and storm",
+        "kind.rain": "Heavy rain",
+        "kind.snow": "Snow",
+        "kind.fog": "Fog",
+        "kind.frost": "Frost",
+        "kind.ice": "Black ice",
+        "kind.thaw": "Thaw",
+        "kind.heat": "Heat",
+        "kind.uv": "UV radiation",
+        "kind.ice_rain": "Freezing rain",
+        "kind.ground_frost": "Ground frost",
+        "kind.coast": "Coastal weather",
+        "kind.other": "Weather",
+        "warning.label": "{kind} warning ({severity})",
+        "warning.advance": "Advance notice: {kind}",
+        "severity.minor": "minor",
+        "severity.moderate": "moderate",
+        "severity.severe": "severe",
+        "severity.extreme": "extreme",
+        "easter.nice": "Nice.",
+    },
+    "de": {
+        "band.excellent": "Ausgezeichnet",
+        "band.good": "Gut",
+        "band.fair": "Brauchbar",
+        "band.poor": "Schlecht",
+        "band.bad": "Kritisch",
+        "band.nodata": "Keine Daten",
+        "advice.excellent": "Perfektes Fursuit-Wetter. Viel Spaß draußen!",
+        "advice.good": "Für einen längeren Zeitraum angenehm. Wasser trinken nicht vergessen.",
+        "advice.fair": "In kürzeren Etappen empfehlenswert. Plane Pausen ein und trinke genug.",
+        "advice.poor": "Gefährlich. Halte es kurz, suche Schatten, nimm einen Handler mit.",
+        "advice.bad": "Nicht empfohlen. Bleib aus dem Suit oder halte dich drinnen auf.",
+        "advice.nodata": "Für diese Stunde liegt keine Temperaturmessung vor.",
+        "sub.thermal": "Temperatur",
+        "sub.precipitation": "Regen",
+        "sub.wind": "Wind",
+        "sub.stickiness": "Schwüle",
+        "reason.heat": "Hitze",
+        "reason.rain": "Regen",
+        "reason.wind": "Wind",
+        "reason.humidity": "Schwüle",
+        "reason.wetbulb": "effektive Feuchtkugeltemperatur {value} °C",
+        "reason.sunload": "+{value} °C Sonneneinstrahlung",
+        "reason.nowind": "kein Wind, -2",
+        "reason.rainrate": "{rate} mm/h, {prob}% Wahrscheinlichkeit",
+        "reason.wetground": "nasser Boden, -2",
+        "reason.thunder_cap": "Gewitter, begrenzt auf 2",
+        "reason.windspeed": "{value} m/s",
+        "reason.gusts_severe": "schwere Böen, begrenzt auf 1",
+        "reason.gusts_strong": "starke Böen, begrenzt auf 3",
+        "reason.dewpoint": "Taupunkt {value} °C",
+        "reason.nodata_wind": "keine Daten, leichter Wind angenommen",
+        "cap.danger": "Gefährliche Hitze",
+        "cap.caution": "Hohe Hitzebelastung",
+        "cap.heat_detail": "{note}: effektive Feuchtkugeltemperatur {value} °C begrenzt den Index auf {cap}",
+        "kind.thunderstorm": "Gewitter",
+        "kind.wind": "Wind und Sturm",
+        "kind.rain": "Starkregen",
+        "kind.snow": "Schnee",
+        "kind.fog": "Nebel",
+        "kind.frost": "Frost",
+        "kind.ice": "Glätte",
+        "kind.thaw": "Tauwetter",
+        "kind.heat": "Hitze",
+        "kind.uv": "UV-Strahlung",
+        "kind.ice_rain": "Gefrierender Regen",
+        "kind.ground_frost": "Bodenfrost",
+        "kind.coast": "Küstenwetter",
+        "kind.other": "Wetter",
+        "warning.label": "{kind}-Warnung ({severity})",
+        "warning.advance": "Vorabinformation: {kind}",
+        "severity.minor": "gering",
+        "severity.moderate": "mäßig",
+        "severity.severe": "schwer",
+        "severity.extreme": "extrem",
+        "easter.nice": "Nice.",
+    },
+}
+
+
+def t(lang: str, key: str, **kwargs) -> str:
+    """Look up a string, falling back to English then to the key itself."""
+    table = STRINGS.get(normalise(lang), STRINGS[DEFAULT_LANGUAGE])
+    template = table.get(key) or STRINGS[DEFAULT_LANGUAGE].get(key) or key
+    return template.format(**kwargs) if kwargs else template

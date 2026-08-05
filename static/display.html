@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Eurofurence Weather: ConOps Display</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦊</text></svg>">
+  <link rel="stylesheet" href="/display.css">
+</head>
+<body>
+<!-- This board is always English: it is read by international staff on shift,
+     regardless of what language a visitor picked on the public site. -->
+<div class="screen" id="screen" hidden>
+
+  <header class="bar">
+    <!-- The board lives inside the CCH, so the city would be noise. -->
+    <div class="place">
+      <span class="event" id="event-name">Eurofurence 30: Fantastic Furry Festival</span>
+      <span class="what">Weather</span>
+    </div>
+    <div class="clock" id="clock">--:--:--</div>
+  </header>
+
+  <main class="grid">
+    <!-- Headline index: the tile itself carries the score colour -->
+    <section class="tile score-tile" id="score-tile">
+      <h2>Fursuiting Index</h2>
+      <div class="score-row">
+        <div class="score"><span id="score">–</span><span class="of">/10</span></div>
+        <div class="score-text">
+          <div class="band" id="label"></div>
+          <p class="advice" id="advice"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Hourly outlook, with the best and worst stretches marked on the bars
+         themselves rather than in panels of their own -->
+    <section class="tile wide chart-tile">
+      <h2>Next 24 hours <span class="tz">— local time, 24 h (am/pm) · grey = past · red line = now · click a bar for details</span></h2>
+      <div class="timeline" id="timeline" role="group" aria-label="Hourly fursuiting index"></div>
+      <p class="legend" id="legend"></p>
+    </section>
+
+    <!-- Conditions strip. Shows now, or the hour of whichever bar was clicked. -->
+    <section class="tile wide conditions-tile">
+      <h2 id="conditions-head">Right now</h2>
+      <div class="conditions" id="conditions"></div>
+    </section>
+
+    <!-- Shown only when the index lands on one very specific score -->
+    <section class="tile wide egg" id="egg" hidden>
+      <h2>6.7</h2>
+      <video id="egg-video" src="/media/ravi_67.mp4" autoplay muted loop playsinline></video>
+    </section>
+  </main>
+
+  <footer class="bar foot">
+    <span id="foot-left">made by @laffiesphere</span>
+    <span id="foot-right">Data: Deutscher Wetterdienst (DWD)</span>
+  </footer>
+</div>
+
+<p class="boot" id="boot">Loading weather data…</p>
+
+<script src="/i18n.js"></script>
+<script src="/chart.js"></script>
+<script src="/display.js"></script>
+</body>
+</html>
