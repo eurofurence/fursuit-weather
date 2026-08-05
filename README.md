@@ -101,7 +101,7 @@ grows the panel instead of landing across the bars. A band too narrow to hold it
 (a one-hour warning is a sliver of a 24-hour chart) keeps the marker and moves its label
 out to whichever side has room.
 
-## Configuration
+## Declaration
 
 AI decliration: AI was used in this project to assist in the building process.
 
