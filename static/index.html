@@ -164,7 +164,17 @@
          other links, not alone on a line of its own below them. -->
     · <a href="/privacy" class="privacy-link" data-i18n="footer.privacy">Privacy</a>
   </p>
-  <p class="disclaimer" data-i18n="footer.disclaimer"></p>
+  <!-- The disclaimer carries a link, so it cannot be one data-i18n string:
+       apply() writes textContent and would eat the anchor. Text and link are
+       separate spans instead. -->
+  <p class="disclaimer">
+    <span data-i18n="footer.disclaimer"></span>
+    <a href="https://t.me/efnotifications" rel="noopener" data-i18n="footer.notifications">Eurofurence Notifications</a>
+  </p>
+  <p>
+    <span data-i18n="footer.builtBy">Built by</span> <strong>Laffie @laffiesphere</strong> ·
+    <a href="https://github.com/laffiie/EurofurenceWeather" rel="noopener" data-i18n="footer.source">source</a>
+  </p>
 </footer>
 
 <!-- Storage notice. Not a consent gate: the site sets no cookies and stores

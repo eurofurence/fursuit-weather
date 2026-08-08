@@ -34,9 +34,13 @@ I've built this website on [DWD OpenData](https://opendata.dwd.de). It uses MOS-
 `/display` is a self-refreshing board sized for a screen at the ConOps desk.
 Warnings are marked directly on the hourly bars rather than in a tile of their own. Open it fullscreen (F11) and leave it.
 
-Clicking a bar switches the conditions strip to that hour, which is handy at the desk when
-someone asks about tonight. It says so in the heading and goes back to live conditions by
-itself after 90 seconds, so an unattended board never sits on a forecast.
+By default it is a plain monitor: nothing on it responds to a click, because most boards
+are a screen on a wall with no input device near them.
+
+Add `?touch` — `/display?touch` — on a screen that really is a touchscreen. Tapping a bar
+then switches the conditions strip to that hour, which is handy at the desk when someone
+asks about tonight. It says so in the heading and goes back to live conditions by itself
+after 90 seconds, so an unattended board never sits on a forecast.
 
 It fits a 1080p landscape screen exactly and falls back to a single column on portrait or
 tablet displays. Might not work in older versions of browsers.

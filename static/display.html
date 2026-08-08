@@ -37,7 +37,10 @@
     <!-- Hourly outlook, with the best and worst stretches marked on the bars
          themselves rather than in panels of their own -->
     <section class="tile wide chart-tile">
-      <h2>Next 24 hours <span class="tz">— local time, 24 h (am/pm) · grey = past · red line = now · click a bar for details</span></h2>
+      <!-- No "click a bar" here: the board is a monitor unless it was opened
+           with ?touch, so on nearly every screen it was an instruction the
+           reader had no way to follow. The legend explains what is drawn. -->
+      <h2>Next 24 hours <span class="tz">— local time, 24 h (am/pm) · grey = past · red line = now</span></h2>
       <div class="timeline" id="timeline" role="group" aria-label="Hourly fursuiting index"></div>
       <p class="legend" id="legend"></p>
     </section>

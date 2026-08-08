@@ -15,6 +15,17 @@ const PAST_CONTEXT_HOURS = 4;
    live conditions on its own rather than sitting on a forecast all evening. */
 const PICK_TIMEOUT_MS = 90 * 1000;
 
+/* Most boards are a screen on a wall with no input device anywhere near them.
+   There, a bar that reacts to a click is only a way for a stray cursor -- or a
+   passing shoulder against a panel -- to leave the board sitting on a forecast,
+   and a "tap a bar" hint is an instruction nobody can follow. So the board is a
+   plain monitor by default and interaction is opt-in per URL:
+
+       /display?touch
+
+   for the one screen at the desk that really is a touchscreen. */
+const TOUCH = new URLSearchParams(location.search).has('touch');
+
 const $ = (id) => document.getElementById(id);
 const fmt = (v, d = 0, u = '') => (v === null || v === undefined ? '–' : `${Number(v).toFixed(d)}${u}`);
 
@@ -107,7 +118,10 @@ function observedItems(current, fsi) {
   return [
     ['Conditions', `${current.weather.icon || ''} ${current.weather.text || '–'}`.trim()],
     ['Temperature', fmt(current.temperature, 1, ' °C')],
-    ['Feels like', fmt(fsi?.wetbulb, 1, ' °C')],
+    // Named for what they are: both read below the air temperature, so
+    // "Feels like" on either of them looked like a fault on a muggy evening.
+    ['Wet-bulb', fmt(fsi?.wetbulb, 1, ' °C')],
+    ['Dew point', fmt(fsi?.dewpoint, 1, ' °C')],
     ['Humidity', fmt(current.humidity, 0, ' %')],
     ['Wind', fmt(current.wind_speed_kmh, 0, ' km/h')],
     ['Gusts', fmt(current.wind_gust_kmh, 0, ' km/h')],
@@ -120,7 +134,8 @@ function forecastItems(entry) {
     ['Conditions', `${entry.weather?.icon || ''} ${entry.weather?.text || '–'}`.trim()],
     ['Index', `${entry.score.toFixed(1)} ${entry.label || ''}`.trim()],
     ['Temperature', fmt(entry.temperature, 1, ' °C')],
-    ['Feels like', fmt(entry.wetbulb, 1, ' °C')],
+    ['Wet-bulb', fmt(entry.wetbulb, 1, ' °C')],
+    ['Dew point', fmt(entry.dewpoint, 1, ' °C')],
     ['Humidity', fmt(entry.humidity, 0, ' %')],
     ['Wind', fmt(entry.wind_speed_kmh, 0, ' km/h')],
     ['Gusts', fmt(entry.wind_gust_kmh, 0, ' km/h')],
@@ -151,7 +166,7 @@ function showConditions() {
     return;
   }
 
-  setHeading('Right now', 'click any bar for that hour');
+  setHeading('Right now');
   if (latest?.current) fillConditions(observedItems(latest.current, latest.fsi));
 }
 
@@ -181,7 +196,10 @@ function drawTimeline() {
     markNow: true,
     values: true,
     selected: picked,
-    onSelect: (entry) => pickHour(entry.time),
+    // No handler means renderStrip leaves the columns inert: no tabindex, no
+    // role="button", and .is-pickable off, so the hover and pointer styles go
+    // with it. A monitor board gets bars that are only a picture.
+    onSelect: TOUCH ? (entry) => pickHour(entry.time) : null,
     ranges: chartRanges(latest),
     // Warnings live on the bars here; the board has no separate tile.
     warnings: EFW.warningRanges(latest.warnings),

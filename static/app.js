@@ -240,7 +240,8 @@ function renderNow(current, fsi) {
   const items = [
     [T('now.conditions'), `${current.weather.icon || ''} ${current.weather.text || '–'}`.trim()],
     [T('now.temperature'), EFW_I18N.temp(current.temperature)],
-    [T('now.feelsLike'), EFW_I18N.temp(fsi?.wetbulb)],
+    [T('now.wetbulb'), EFW_I18N.temp(fsi?.wetbulb)],
+    [T('now.dewpoint'), EFW_I18N.temp(fsi?.dewpoint)],
     [T('now.humidity'), fmt(current.humidity, 0, ' %')],
     [
       T('now.wind'),
@@ -388,7 +389,8 @@ function renderHourDetail(host, entry) {
   grid.className = 'now';
   statGrid(grid, [
     [T('now.temperature'), EFW_I18N.temp(entry.temperature)],
-    [T('now.feelsLike'), EFW_I18N.temp(entry.wetbulb)],
+    [T('now.wetbulb'), EFW_I18N.temp(entry.wetbulb)],
+    [T('now.dewpoint'), EFW_I18N.temp(entry.dewpoint)],
     [T('now.humidity'), fmt(entry.humidity, 0, ' %')],
     [
       T('now.wind'),

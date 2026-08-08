@@ -2,7 +2,7 @@
 
 Author: laffiesphere (https://github.com/laffiie/EurofurenceWeather)
 
-An unofficial community project for the convention. Weather data comes from
+The official weather site for the convention. Weather data comes from
 Deutscher Wetterdienst OpenData and is used under GeoNutzV; see /api-docs for
 the public API and the attribution it requires.
 """

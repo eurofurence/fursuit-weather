@@ -105,18 +105,31 @@ def draw_floor(key: str) -> float:
 
 #: Lower bounds of moderate, high and very high, in grains/m3.
 #:
-#: Per species, because the taxa are nowhere near equally potent -- ragweed
-#: provokes symptoms at concentrations an order of magnitude below the ones that
-#: matter for birch, and a single scale would either cry wolf about grass or say
-#: nothing at all about ragweed. Overridable in config.json, because these are a
-#: reading of common practice rather than anything DWD publishes.
+#: Two different things set these, and conflating them is how the table goes
+#: wrong:
+#:
+#: * **Where "moderate" starts** follows potency -- the concentration at which a
+#:   sensitised person notices anything. Ragweed is by far the worst of the five
+#:   and provokes symptoms in the single digits; the trees and grasses need
+#:   something in the tens.
+#: * **Where "very high" starts** follows how high that taxon's counts actually
+#:   run. Birch peaks in the hundreds in a northern-German spring, so it needs
+#:   headroom or the map sits pinned at the top colour for weeks; ragweed never
+#:   gets near those numbers and must not be judged on them.
+#:
+#: Hence ragweed's whole scale sitting below every other species'. These are a
+#: reading of common European aerobiological practice, not something DWD
+#: publishes -- exact figures vary between national services, which is why they
+#: are overridable in config.json.
 DEFAULT_THRESHOLDS: Dict[str, Tuple[float, float, float]] = {
-    "hazel": (10.0, 50.0, 100.0),
-    "alder": (10.0, 50.0, 100.0),
-    "birch": (10.0, 80.0, 200.0),
-    "grasses": (30.0, 50.0, 150.0),
-    # Far lower, and deliberately so: ragweed is the most potent of the five.
-    "ragweed": (5.0, 20.0, 50.0),
+    "hazel": (10.0, 30.0, 70.0),
+    "alder": (10.0, 30.0, 70.0),
+    # Potent, but the counts are in a league of their own: 200 to top out.
+    "birch": (10.0, 50.0, 200.0),
+    "grasses": (10.0, 30.0, 80.0),
+    # Far lower, and deliberately so: ragweed is the most potent of the five,
+    # and its "high" sits below where grass is still only moderate.
+    "ragweed": (3.0, 10.0, 25.0),
 }
 
 

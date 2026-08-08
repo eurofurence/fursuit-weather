@@ -8,9 +8,9 @@ window.EFW_I18N = (function () {
       'app.offline': 'Offline',
       'app.error': 'Could not load weather data',
       'app.retry': 'Retrying shortly…',
-      'app.stale': 'Saved copy from {when} — could not reach the server.',
+      'app.stale': 'Saved copy from {when}. could not reach the server.',
 
-      'load.busy': 'Busy right now — a lot of people are here, so pages may take a moment.',
+      'load.busy': 'Busy right now. a lot of people are here, so pages may take a moment.',
       'load.crowded':
         'Very busy right now. This site runs on one small computer, so loading will be slow for a while. Everything still works. please be patient!',
 
@@ -27,7 +27,7 @@ window.EFW_I18N = (function () {
       'fsi.scoreHeader': 'Score',
       'fsi.explainSummary': 'How is this calculated?',
       'fsi.explainBody':
-        'The Index ranks the ability to be in a fursuit outdoors, from 0 to 10. It weighs heat stress from the wet-bulb temperature plus sun load. Official DWD warnings do not change the score: they are marked on the bars over the hours they cover, so you can judge them yourself.',
+        'The Index ranks the ability to be in a fursuit outdoors, from 0 to 10. It weighs heat stress from the wet-bulb temperature plus sun load. Wet-bulb is the coolest your body can get by sweating, so it reads lower than the air temperature — and the closer the two are, the less the sweating helps, which is exactly what a suit has to cope with. Dew point is a separate figure and says how clammy the air feels: above about 15 °C it starts to feel muggy. Official DWD warnings do not change the score: they are marked on the bars over the hours they cover, so you can judge them yourself.',
 
       'band.excellent': 'Excellent',
       'band.good': 'Good',
@@ -38,7 +38,13 @@ window.EFW_I18N = (function () {
       'now.heading': 'Right now',
       'now.conditions': 'Conditions',
       'now.temperature': 'Temperature',
-      'now.feelsLike': 'Feels like',
+      /* Not "feels like". Both of these sit *below* the air temperature, so
+         labelling either as an apparent temperature reads as a mistake on a
+         muggy day -- "28 °C, feels like 22 °C" is the opposite of the truth.
+         They are named for what they are, and fsi.explainBody says what they
+         mean. */
+      'now.wetbulb': 'Wet-bulb',
+      'now.dewpoint': 'Dew point',
       'now.humidity': 'Humidity',
       'now.wind': 'Wind',
       'now.gusts': 'Gusts',
@@ -113,7 +119,10 @@ window.EFW_I18N = (function () {
       'footer.display': 'ConOps display',
       'footer.api': 'Weather API',
       'footer.disclaimer':
-        'Unofficial community project. Always follow official DWD warnings and convention staff instructions. Creator: Laffie @laffiesphere.',
+        'Official Eurofurence site. Always follow the official DWD warnings, and for convention announcements the official Telegram channel:',
+      'footer.notifications': 'Eurofurence Notifications',
+      'footer.builtBy': 'Built by',
+      'footer.source': 'github',
       'footer.units': 'Units',
       'footer.clock': 'Time',
       'footer.privacy': 'Privacy',
@@ -132,11 +141,11 @@ window.EFW_I18N = (function () {
       'app.offline': 'Offline',
       'app.error': 'Wetterdaten konnten nicht geladen werden',
       'app.retry': 'Neuer Versuch in Kürze…',
-      'app.stale': 'Gespeicherte Fassung von {when} — Server nicht erreichbar.',
+      'app.stale': 'Gespeicherte Fassung von {when}. Server nicht erreichbar.',
 
       'load.busy': 'Gerade ist viel los. es sind viele Leute hier, das Laden kann etwas dauern.',
       'load.crowded':
-        'Sehr viel los gerade. Diese Seite läuft auf einem einzelnen kleinen Rechner, das Laden wird eine Weile langsam sein. Es funktioniert weiterhin alles — bitte etwas Geduld und lieber einmal neu laden als dauernd klicken.',
+        'Sehr viel los gerade. Diese Seite läuft auf einem einzelnen kleinen Rechner, das Laden wird eine Weile langsam sein. Es funktioniert weiterhin alles.',
 
       'fsi.heading': 'Fursuiting Index',
       'fsi.now': 'jetzt',
@@ -151,7 +160,7 @@ window.EFW_I18N = (function () {
       'fsi.scoreHeader': 'Punkte',
       'fsi.explainSummary': 'Wie wird das berechnet?',
       'fsi.explainBody':
-        'Der Index bewertet von 0 bis 10, wie angenehm und sicher es im Fursuit draußen ist. Er gewichtet die Hitzebelastung aus Temperatur, gefühlter Temperatur und Sonneneinstrahlung, zusammen mit Wind und Niederschlagsvorhersage. Amtliche DWD-Warnungen verändern den Wert nicht: Sie sind über den betroffenen Stunden an den Balken markiert, damit du sie selbst einschätzen kannst.',
+        'Der Index bewertet von 0 bis 10, wie angenehm und sicher es im Fursuit draußen ist. Er gewichtet die Hitzebelastung aus der Feuchtkugeltemperatur und der Sonneneinstrahlung, zusammen mit Wind und Niederschlagsvorhersage. Die Feuchtkugeltemperatur ist der kühlste Wert, den dein Körper durchs Schwitzen noch erreicht — sie liegt deshalb unter der Lufttemperatur, und je näher beide beieinander liegen, desto weniger bringt das Schwitzen. Genau das muss ein Fursuit aushalten. Der Taupunkt ist eine eigene Größe und sagt, wie schwül sich die Luft anfühlt: ab etwa 15 °C wird es klamm. Amtliche DWD-Warnungen verändern den Wert nicht: Sie sind über den betroffenen Stunden an den Balken markiert, damit du sie selbst einschätzen kannst.',
 
       'band.excellent': 'Ausgezeichnet',
       'band.good': 'Gut',
@@ -162,7 +171,8 @@ window.EFW_I18N = (function () {
       'now.heading': 'Jetzt gerade',
       'now.conditions': 'Wetterlage',
       'now.temperature': 'Temperatur',
-      'now.feelsLike': 'Gefühlte Temperautur',
+      'now.wetbulb': 'Feuchtkugeltemperatur',
+      'now.dewpoint': 'Taupunkt',
       'now.humidity': 'Luftfeuchte',
       'now.wind': 'Wind',
       'now.gusts': 'Böen',
@@ -236,7 +246,10 @@ window.EFW_I18N = (function () {
       'footer.display': 'ConOps-Anzeige',
       'footer.api': 'Wetter-API',
       'footer.disclaimer':
-        'Inoffizielles EF-Projekt. Befolge stets die amtlichen DWD-Warnungen und die Anweisungen des ConOp-Teams. Projekt von Laffie @laffiesphere.',
+        'Offizielle Eurofurence-Seite. Befolge stets die amtlichen DWD-Warnungen, und für Ansagen der Convention den offiziellen Telegram-Kanal:',
+      'footer.notifications': 'Eurofurence Notifications',
+      'footer.builtBy': 'Gebaut von',
+      'footer.source': 'github',
       'footer.units': 'Einheiten',
       'footer.clock': 'Uhrzeit',
       'footer.privacy': 'Datenschutz',

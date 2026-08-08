@@ -197,10 +197,23 @@ def test_out_of_season_is_a_lookup_error_not_a_fetch(monkeypatch):
 
 def test_thresholds_differ_by_species():
     """Ragweed provokes symptoms an order of magnitude lower than grass; one
-    shared scale would either cry wolf about grass or say nothing about it."""
-    assert pollen.thresholds("ragweed")[0] < pollen.thresholds("grasses")[0]
-    assert pollen.level_name("ragweed", 25.0) == "high"
-    assert pollen.level_name("grasses", 25.0) == "low"
+    shared scale would either cry wolf about grass or say nothing about it.
+
+    Written against the relationship rather than against particular numbers:
+    the bands are a judgement call and get retuned, but ragweed ranking harsher
+    than grass at the same concentration is the reason they are per species at
+    all, and that must survive any retune.
+    """
+    ragweed = pollen.thresholds("ragweed")
+    grasses = pollen.thresholds("grasses")
+    assert all(r < g for r, g in zip(ragweed, grasses))
+
+    # Air that has only just reached "moderate" for grass is already worse than
+    # moderate for ragweed.
+    at_grass_moderate = grasses[0]
+    assert pollen.level_index("ragweed", at_grass_moderate) > pollen.level_index(
+        "grasses", at_grass_moderate
+    )
 
 
 def test_levels_climb_with_concentration():

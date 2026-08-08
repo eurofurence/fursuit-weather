@@ -1,0 +1,246 @@
+/* Fallbacks for browsers older than the CSS in style.css and display.css.
+   Everything here is gated behind a class compat.js puts on <html>, so a
+   current browser matches nothing in this file and is not affected by it.
+
+   The oldest target is Chrome 72 (January 2019), which is what a fair number of
+   older Android phones and the cheap sticks behind info screens are stuck on.
+   Four things it cannot do:
+
+     color-mix()   Chrome 111 -- the whole quiet-grey half of the palette
+     gap on flex   Chrome 84  -- grid gap works, flex gap does not
+     inset         Chrome 87
+     clamp()       Chrome 79  -- almost every font-size on the ConOps board
+
+   Load this AFTER the stylesheet it patches. See README, "Older browsers". */
+
+/* ---------------------------------------------------------------------------
+   color-mix()
+
+   The mixes are resolved by hand against the palette they blend into. A custom
+   property whose value does not parse is not "ignored" the way an ordinary
+   declaration is -- it becomes invalid at computed-value time, so `--muted`
+   ends up unset and every `color: var(--muted)` inherits full-strength white
+   instead. The muted text is the site's whole second voice; without this the
+   page is legible but shouts.
+   --------------------------------------------------------------------------- */
+
+/* Flat results of the two mixes, worked out against the palette they blend. */
+.no-color-mix {
+  --muted: #a3adb9;  /* cool-indigo 55% over cool-slate */
+  --border: #364462; /* cool-slate 45% over midnight-teal */
+}
+
+/* A mix with `transparent` is the same colour at that alpha, so these are exact
+   rather than approximations -- rgba() has worked since forever. */
+.no-color-mix .progress { background: rgba(179, 255, 255, 0.14); }
+.no-color-mix .progress .fill { box-shadow: 0 0 8px rgba(179, 255, 255, 0.6); }
+.no-color-mix .map-progress { background: rgba(0, 0, 0, 0.35); }
+
+.no-color-mix .skeleton .sk-score,
+.no-color-mix .skeleton .sk-lines i,
+.no-color-mix .skeleton .sk-strip,
+.no-color-mix .skeleton .sk-now span,
+.no-color-mix .skeleton .sk-day {
+  background: linear-gradient(
+    90deg,
+    rgba(79, 99, 116, 0.22) 25%,
+    rgba(79, 99, 116, 0.42) 45%,
+    rgba(79, 99, 116, 0.22) 65%
+  );
+}
+
+/* The index panel is tinted from JS with a colour this file cannot know, and
+   the border is 70% of it over black. 30% black laid over the same tint gets to
+   the same place without needing to name it. */
+.no-color-mix .fsi-card { border-color: rgba(0, 0, 0, 0.3); }
+
+/* These mix against `--ink`, the contrast colour JS picks per score -- black on
+   the pale bands, white on the dark ones. Only one can be picked here, and
+   black is the safer of the two: most of the scale is a light green, yellow or
+   amber, where a white wash would vanish. Alphas kept as they were. */
+.no-color-mix .windows .window { background: rgba(0, 0, 0, 0.12); }
+.no-color-mix .subscores .bar { background: rgba(0, 0, 0, 0.18); }
+.no-color-mix .fsi-caps { background: rgba(0, 0, 0, 0.16); }
+.no-color-mix .hour-detail { background: rgba(0, 0, 0, 0.14); }
+
+.no-color-mix .timeline .hour.is-empty > .fsi-bar {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 5px,
+    rgba(231, 233, 242, 0.07) 5px 10px
+  );
+  border: 1px dashed rgba(231, 233, 242, 0.18);
+  border-bottom: 0;
+}
+.no-color-mix .timeline.is-pickable .hour:hover { background: rgba(231, 233, 242, 0.12); }
+.no-color-mix .timeline .hour.is-selected { background: rgba(231, 233, 242, 0.16); }
+
+.no-color-mix .day { background: rgba(79, 99, 116, 0.1); }
+.no-color-mix .docs-main .note { background: rgba(179, 255, 255, 0.07); }
+.no-color-mix .todo { background: rgba(241, 60, 163, 0.12); }
+
+/* Mixed over the card rather than over nothing, so these are opaque. */
+.no-color-mix .error { background: #472e62; }
+.no-color-mix .load-notice { background: #3d4050; }
+.no-color-mix .load-notice.crowded { background: #44374a; }
+.no-color-mix .storage-notice { background: #1f284d; }
+
+.no-color-mix .warn-track .range.hatched { background-color: rgba(229, 57, 53, 0.28); }
+.no-color-mix .warnings-summary .advance-tag { background-color: rgba(229, 57, 53, 0.3); }
+
+/* ---- ConOps board ---- */
+.no-color-mix .score-tile { border-color: rgba(0, 0, 0, 0.3); }
+/* Tinted with the warning's own colour, which lives in a variable this file
+   cannot take an alpha from. The 5px border down the left already carries that
+   colour; a neutral lift is enough to separate the block from the tile. */
+.no-color-mix .warn { background: rgba(255, 255, 255, 0.08); }
+/* The board picks a slightly stronger selection wash than the main page. */
+.no-color-mix .screen .timeline .hour.is-selected { background: rgba(231, 233, 242, 0.18); }
+
+/* ---------------------------------------------------------------------------
+   gap on a flex container
+
+   No property stands in for it, so the spacing is put back as margins. Only
+   containers whose children are laid out in a line need it -- a grid container
+   keeps its gap on every browser here, and `.warn-track`/`.ranges` stack rows
+   whose spacing is decorative.
+
+   `> * + *` throughout: the space goes between items, never before the first or
+   after the last, which is what gap does and what a blanket margin does not.
+   --------------------------------------------------------------------------- */
+
+/* Horizontal space between items sitting side by side on one line. */
+.no-flex-gap .skeleton .sk-row > * + * { margin-left: 1.1rem; }
+.no-flex-gap .site-header h1 .title > * + * { margin-left: 0.5rem; }
+.no-flex-gap .fsi-top > * + * { margin-left: 1.1rem; }
+.no-flex-gap .head-row > * + * { margin-left: 1rem; }
+.no-flex-gap .head-controls > * + * { margin-left: 0.7rem; }
+.no-flex-gap .allergy-switch > * + * { margin-left: 0.35rem; }
+.no-flex-gap .radar-controls > * + * { margin-left: 1rem; }
+.no-flex-gap .radar-controls label > * + * { margin-left: 0.4rem; }
+.no-flex-gap .model-tabs > * + * { margin-left: 0.4rem; }
+.no-flex-gap .model-step > * + * { margin-left: 0.5rem; }
+.no-flex-gap .model-legend .row > * + * { margin-left: 0.6rem; }
+.no-flex-gap .storage-notice .actions > * + * { margin-left: 1rem; }
+.no-flex-gap .hour-detail .head > * + * { margin-left: 0.7rem; }
+.no-flex-gap .warnings-summary > summary > * + * { margin-left: 0.5rem; }
+
+/* The hourly bars: the one gap on the page that carries meaning rather than
+   polish. Without it 24 columns read as a single block and the chart stops
+   being a chart. The strip never wraps, so an adjacent-sibling margin is
+   exactly a gap -- no negative margin on the container, which would have
+   pushed a strip that scrolls sideways out past its own frame. */
+.no-flex-gap .timeline > .hour + .hour { margin-left: 3px; }
+
+/* Stacked rows of warning bands, in the metric the chart itself sets. */
+.no-flex-gap .warn-track > .row + .row { margin-top: var(--warn-gap, 3px); }
+
+/* Rows that wrap need the vertical half of the gap as well, and a margin on
+   the items is the only way to get it. The negative margin on the container
+   takes back the outer edge so the row still lines up with everything above
+   and below it. */
+.no-flex-gap .day header,
+.no-flex-gap .day .hilo,
+.no-flex-gap .legend,
+.no-flex-gap .unit-switch,
+.no-flex-gap .docs-toc {
+  margin-left: -0.55rem;
+  margin-right: -0.55rem;
+}
+.no-flex-gap .day header > *,
+.no-flex-gap .day .hilo > *,
+.no-flex-gap .legend > *,
+.no-flex-gap .unit-switch > *,
+.no-flex-gap .docs-toc > * {
+  margin: 0.18rem 0.55rem;
+}
+
+/* `margin-left: auto` is what pushes these three to the far end of their row.
+   The rules above set a margin shorthand on every child, which would otherwise
+   have quietly dropped it and left them mid-row. */
+.no-flex-gap .day header .temps,
+.no-flex-gap .day .hilo .avg,
+.no-flex-gap .hour-detail .head .score { margin-left: auto; }
+
+/* ...but on a phone style.css drops that push so the day rows stack instead of
+   stretching. Repeated here because the rule above now outranks it. */
+@media (max-width: 480px) {
+  .no-flex-gap .day header .temps,
+  .no-flex-gap .day .hilo .avg { margin-left: 0.55rem; }
+}
+
+/* ---- ConOps board ----
+   Its stylesheet is a separate file with its own, viewport-relative metrics, so
+   where a selector exists in both (.timeline, .legend) the board's value is set
+   here under .screen, which is the root of that page and of no other. */
+
+.no-flex-gap .screen > * + * { margin-top: 1vh; }
+.no-flex-gap .bar > * + * { margin-left: 1rem; }
+.no-flex-gap .place > * + * { margin-left: 0.7vw; }
+.no-flex-gap .score-row > * + * { margin-left: 1.4vw; }
+.no-flex-gap .all-clear > * + * { margin-left: 0.6vw; }
+.no-flex-gap #warnings > * + * { margin-top: 0.7vh; }
+.no-flex-gap .conditions > * + * { margin-left: 1.5rem; }
+.no-flex-gap .ranges > .row + .row { margin-top: 0.4vh; }
+
+.no-flex-gap .screen .timeline > .hour + .hour { margin-left: 0.35vw; }
+.no-flex-gap .screen .legend { margin-left: -0.45vw; margin-right: -0.45vw; }
+.no-flex-gap .screen .legend > * { margin: 0.18rem 0.45vw; }
+
+/* ---------------------------------------------------------------------------
+   inset
+
+   Two fixed bars. Without the shorthand they have no offsets at all and settle
+   wherever the flow leaves them -- the loading bar in particular ends up
+   floating over the middle of the page.
+   --------------------------------------------------------------------------- */
+
+.no-inset .progress { top: 0; right: 0; left: 0; bottom: auto; }
+.no-inset .storage-notice { top: auto; right: 0; bottom: 0; left: 0; }
+
+/* ---------------------------------------------------------------------------
+   clamp()
+
+   Fixed sizes at the middle of each original range. The board loses its
+   viewport-relative scaling and stops fitting any screen exactly, but it stays
+   readable -- where an unparsable font-size leaves every heading at 16px and
+   the headline score indistinguishable from its own caption.
+   --------------------------------------------------------------------------- */
+
+.no-clamp .place { font-size: 1.5rem; }
+.no-clamp .event { font-size: 0.8rem; }
+.no-clamp .clock { font-size: 2rem; }
+.no-clamp .foot { font-size: 0.9rem; }
+.no-clamp .tile h2 { font-size: 0.9rem; }
+.no-clamp .score #score { font-size: 6rem; }
+.no-clamp .score .of { font-size: 1.5rem; }
+.no-clamp .band { font-size: 2.2rem; }
+.no-clamp .advice { font-size: 1.1rem; }
+.no-clamp .warn .head { font-size: 1.1rem; }
+.no-clamp .warn .when { font-size: 0.85rem; }
+.no-clamp .all-clear { font-size: 1.5rem; }
+.no-clamp .timeline .wx { font-size: 1rem; }
+.no-clamp .timeline .hour::after { font-size: 0.8rem; }
+.no-clamp .legend { font-size: 0.9rem; }
+.no-clamp .conditions .k { font-size: 0.85rem; }
+.no-clamp .conditions .v { font-size: 1.4rem; }
+.no-clamp .ranges .range,
+.no-clamp .ranges .range-label,
+.no-clamp .warn-track .range,
+.no-clamp .warn-track .range-label { font-size: 0.8rem; }
+.no-clamp .fsi-value { font-size: 0.95rem; }
+
+/* ---------------------------------------------------------------------------
+   :focus-visible
+
+   An unparsable selector takes its whole rule down, so keyboard focus rings
+   disappear entirely. `:focus` is the older, blunter version of the same idea:
+   it also fires on a mouse click, which is a little noisy but never invisible.
+   --------------------------------------------------------------------------- */
+
+.no-focus-visible .timeline .hour:focus,
+.no-focus-visible .storage-notice button:focus,
+.no-focus-visible .allergy-switch select:focus {
+  outline: 2px solid var(--accent, #b3ffff);
+  outline-offset: 2px;
+}
