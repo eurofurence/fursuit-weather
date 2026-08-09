@@ -155,7 +155,7 @@ function renderFSI(data) {
   text($('fsi-advice'), fsi.advice);
 
   const observed = data.current ? data.current.time_local : null;
-  text($('fsi-time'), observed ? `· ${T('fsi.now')} ${EFW_I18N.time(observed)}` : '');
+  text($('fsi-time'), observed ? `· ${T('fsi.hour')} ${EFW_I18N.time(observed)}` : '');
 
   const list = $('subscores');
   list.innerHTML = '';

@@ -15,7 +15,7 @@ window.EFW_I18N = (function () {
         'Very busy right now. This site runs on one small computer, so loading will be slow for a while. Everything still works. please be patient!',
 
       'fsi.heading': 'Fursuiting Index',
-      'fsi.now': 'right now',
+      'fsi.hour': 'forecast hour',
       'fsi.next24': 'Next 24 hours · tap a bar for details',
       'fsi.best': 'Best stretch',
       'fsi.worst': 'Worst stretch',
@@ -38,11 +38,6 @@ window.EFW_I18N = (function () {
       'now.heading': 'Right now',
       'now.conditions': 'Conditions',
       'now.temperature': 'Temperature',
-      /* Not "feels like". Both of these sit *below* the air temperature, so
-         labelling either as an apparent temperature reads as a mistake on a
-         muggy day -- "28 °C, feels like 22 °C" is the opposite of the truth.
-         They are named for what they are, and fsi.explainBody says what they
-         mean. */
       'now.wetbulb': 'Wet-bulb',
       'now.dewpoint': 'Dew point',
       'now.humidity': 'Humidity',
@@ -126,6 +121,7 @@ window.EFW_I18N = (function () {
       'footer.units': 'Units',
       'footer.clock': 'Time',
       'footer.privacy': 'Privacy',
+      'footer.feedback': 'Feedback',
       'notice.text':
         'No advertising, no analytics, no tracking cookies.',
       'notice.ok': 'Got it', 
@@ -148,7 +144,7 @@ window.EFW_I18N = (function () {
         'Sehr viel los gerade. Diese Seite läuft auf einem einzelnen kleinen Rechner, das Laden wird eine Weile langsam sein. Es funktioniert weiterhin alles.',
 
       'fsi.heading': 'Fursuiting Index',
-      'fsi.now': 'jetzt',
+      'fsi.hour': 'Vorhersagestunde',
       'fsi.next24': 'Nächste 24 Stunden · Balken antippen für Details',
       'fsi.best': 'Bester Zeitraum',
       'fsi.worst': 'Ungünstigster Zeitraum',
@@ -164,14 +160,14 @@ window.EFW_I18N = (function () {
 
       'band.excellent': 'Ausgezeichnet',
       'band.good': 'Gut',
-      'band.fair': 'Mäßig',
+      'band.fair': 'Okay',
       'band.poor': 'Vorsicht',
       'band.bad': 'Kritisch',
 
       'now.heading': 'Jetzt gerade',
       'now.conditions': 'Wetterlage',
       'now.temperature': 'Temperatur',
-      'now.wetbulb': 'Feuchtkugeltemperatur',
+      'now.wetbulb': 'Feuchtkugel\u00ADtemperatur',
       'now.dewpoint': 'Taupunkt',
       'now.humidity': 'Luftfeuchte',
       'now.wind': 'Wind',
@@ -253,6 +249,7 @@ window.EFW_I18N = (function () {
       'footer.units': 'Einheiten',
       'footer.clock': 'Uhrzeit',
       'footer.privacy': 'Datenschutz',
+      'footer.feedback': 'Feedback',
       'notice.text':
         'Keine Werbung, keine Analyse, keine Tracking-Cookies.',
       'notice.ok': 'Verstanden',

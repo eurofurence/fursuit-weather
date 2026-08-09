@@ -439,7 +439,10 @@ body {
 /* ---------- Current conditions ---------- */
 
 .now { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.9rem 1rem; }
-.now .item .k { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+/* German compounds run long -- "Feuchtkugeltemperatur" is one 21-letter word in
+   an 8rem column. The label itself carries a soft hyphen to break politely;
+   this is the backstop for any other label that has no break point at all. */
+.now .item .k { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); overflow-wrap: break-word; }
 .now .item .v { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .now .item .v small { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
 

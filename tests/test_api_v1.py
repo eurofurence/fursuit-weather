@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 
+from app import i18n as app_i18n
 from app import main
 from app.dwd import mosmix, observations
 from app.dwd import warnings as dwd_warnings
@@ -244,9 +245,14 @@ def test_overview_bundles_the_same_shapes(client):
 def test_german_translates_generated_text(client):
     body = client.get("/api/v1/fsi?lang=de").json()
     assert body["meta"]["language"] == "de"
-    assert body["band"] in {"Ausgezeichnet", "Gut", "Mäßig", "Vorsicht", "Kritisch"}
+    # Read off app.i18n rather than copied out of it: the hard-coded list here
+    # had drifted to the *frontend's* German wording ("Mäßig", "Vorsicht"),
+    # which the API never returns, so the assertion only held for as long as
+    # the fixture never landed in those two bands.
+    keys = ("excellent", "good", "fair", "poor", "bad")
+    assert body["band"] in {app_i18n.t("de", f"band.{key}") for key in keys}
     # The key stays stable across languages -- that is what clients switch on.
-    assert body["band_key"] in {"excellent", "good", "fair", "poor", "bad"}
+    assert body["band_key"] in set(keys)
 
 
 def test_an_unknown_language_is_rejected(client):

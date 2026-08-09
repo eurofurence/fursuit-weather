@@ -84,7 +84,7 @@ STRINGS: Dict[str, Dict[str, str]] = {
     "de": {
         "band.excellent": "Ausgezeichnet",
         "band.good": "Gut",
-        "band.fair": "Brauchbar",
+        "band.fair": "Okay",
         "band.poor": "Schlecht",
         "band.bad": "Kritisch",
         "band.nodata": "Keine Daten",

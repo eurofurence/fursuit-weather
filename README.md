@@ -1,6 +1,6 @@
 # EurofurenceWeather
 
-Eurofurence Weather is a easy to use tool, that allows convention goers at EF in Hamburg to quickly assess the ability to hang outside either with or without suit.
+Eurofurence Weather is an easy to use tool, that allows convention goers at EF in Hamburg to quickly assess the ability to hang outside either with or without suit.
 
 ![alt text](media/Site_preview.jpg "Site preview")
 
