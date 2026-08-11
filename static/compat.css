@@ -124,8 +124,7 @@
 .no-flex-gap .skeleton .sk-row > * + * { margin-left: 1.1rem; }
 .no-flex-gap .site-header h1 .title > * + * { margin-left: 0.5rem; }
 .no-flex-gap .fsi-top > * + * { margin-left: 1.1rem; }
-/* The controls stack now, so their gap is a vertical one. */
-.no-flex-gap .head-controls > * + * { margin-top: 0.4rem; }
+.no-flex-gap .head-controls > * + * { margin-left: 0.4rem; }
 .no-flex-gap .allergy-switch > * + * { margin-left: 0.3rem; }
 .no-flex-gap .radar-controls > * + * { margin-left: 1rem; }
 .no-flex-gap .radar-controls label > * + * { margin-left: 0.4rem; }

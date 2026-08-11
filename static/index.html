@@ -45,7 +45,14 @@
     <label class="allergy-switch" id="allergy-switch" hidden>
       <span class="icon" aria-hidden="true">🤧</span>
       <span class="visually-hidden" data-i18n="pollen.label">Allergy</span>
-      <select id="allergy-select"></select>
+      <!-- The select is laid over a copy of its own selected text rather than
+           left to size itself: a native menu is as wide as its widest option, so
+           the pill was permanently sized for the longest species even when the
+           short one was chosen. The sizer holds the width, the select fills it. -->
+      <span class="field">
+        <span class="sizer" id="allergy-sizer" aria-hidden="true"></span>
+        <select id="allergy-select"></select>
+      </span>
     </label>
   </div>
   <p class="subtitle" id="subtitle">Loading…</p>

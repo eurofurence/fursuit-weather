@@ -801,10 +801,22 @@ function buildAllergySwitch() {
     select.append(option);
   }
   host.hidden = false;
+  sizeAllergySwitch();
+}
+
+/** Hand the pill the width of the species on show -- see .allergy-switch in the
+ *  stylesheet. Wanted after every rebuild (the language changes the words) and
+ *  after every choice. */
+function sizeAllergySwitch() {
+  const select = $('allergy-select');
+  const sizer = $('allergy-sizer');
+  if (!select || !sizer) return;
+  sizer.textContent = select.options[select.selectedIndex]?.textContent ?? '';
 }
 
 function onAllergyChange() {
   EFW_I18N.setAllergy($('allergy-select').value);
+  sizeAllergySwitch();
   // The pollen tab appears or disappears with the choice, and a card sitting on
   // it when it goes has to fall back rather than keep requesting a dead layer.
   if (isPollen() && !pollenSpecies()) modelParam = 'clouds';
