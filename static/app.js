@@ -804,7 +804,8 @@ function buildAllergySwitch() {
   sizeAllergySwitch();
 }
 
-/** Hand the pill the width of the species on show -- see .allergy-switch in the
+/** Write the species on show into the pill -- the select over it is invisible,
+ *  so this span is both the text and the width. See .allergy-switch in the
  *  stylesheet. Wanted after every rebuild (the language changes the words) and
  *  after every choice. */
 function sizeAllergySwitch() {

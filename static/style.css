@@ -760,6 +760,8 @@ body {
    "Allergy" used to, in a fraction of the width, and the species stays on show
    so the control still answers "which one is on" without being opened. */
 .allergy-switch {
+  /* Anchor for the select, which is stretched over the whole pill below. */
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -775,19 +777,22 @@ body {
 .allergy-switch:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 .allergy-switch .icon { font-size: 0.95rem; line-height: 1; }
 /* The pill is only as wide as the species currently on show. A native <select>
-   reserves room for its widest option, so the width is taken from a hidden copy
-   of the selected text instead (kept in step by buildAllergySwitch) and the
-   select is stretched over it. */
-.allergy-switch .field {
-  position: relative;
-  display: inline-block;
-}
+   reserves room for its widest option, so the text on show is drawn by a span of
+   our own (kept in step by sizeAllergySwitch) and the select is laid over the
+   whole pill, invisible.
+
+   Over the whole pill and not just the text: the select's own box is the only
+   part of a <select> that opens the menu in Chromium -- clicking the <label>
+   around it moves focus there but does not open it, the way it does in Firefox
+   -- so the emoji, the arrow and the padding were all dead to a click. Covering
+   the pill makes every pixel of it the control, which is what it looks like. */
+.allergy-switch .field { display: inline-block; }
 .allergy-switch .sizer {
   display: block;
-  visibility: hidden;
   white-space: pre;
   font-size: 0.8rem;
   font-weight: 600;
+  color: var(--text);
   padding: 0.25rem 0;
 }
 .allergy-switch select {
@@ -796,21 +801,21 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
+  margin: 0;
   border: 0;
+  padding: 0;
   background: none;
-  color: var(--text);
   font: inherit;
   font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0.25rem 0;
+  /* Invisible rather than merely transparent-texted: the sizer says the same
+     thing where the width accounts for it, and an opacity of 0 still takes
+     clicks and still brings up the browser's own menu. The native arrow goes
+     with it, so the pill draws that too. */
+  opacity: 0;
   cursor: pointer;
-  /* The native arrow is drawn inside the control and is not in the text the
-     sizer measures, so it would sit on top of the last word. Ours is drawn by
-     the pill instead, where the width does account for it. */
   -webkit-appearance: none;
   appearance: none;
 }
-.allergy-switch select:focus-visible { outline: none; }
 .allergy-switch::after {
   content: '▾';
   font-size: 0.7rem;
@@ -823,24 +828,15 @@ body {
 
 /* On a phone the pill drops to a square with nothing in it but the emoji: the
    language switch and the species name together were more than the line had,
-   and the name is one tap away in the menu anyway. The select keeps covering the
-   whole square, invisible, so the whole thing is still the control. */
+   and the name is one tap away in the menu anyway. The select still covers the
+   whole square, so the whole thing is still the control. */
 @media (max-width: 480px) {
   .allergy-switch {
-    position: relative;
     width: 2rem;
     padding: 0;
     justify-content: center;
   }
-  .allergy-switch .field {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-  }
   .allergy-switch .sizer { display: none; }
-  .allergy-switch select { opacity: 0; }
   .allergy-switch::after { content: none; }
 }
 

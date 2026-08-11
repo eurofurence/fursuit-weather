@@ -249,9 +249,12 @@
    it also fires on a mouse click, which is a little noisy but never invisible.
    --------------------------------------------------------------------------- */
 
+/* The allergy pill is not in this list: its select is invisible (the pill draws
+   the text and the arrow itself), so an outline on it would be too. The ring it
+   does get hangs off :focus-within on the pill, which is older than
+   :focus-visible and so is there whenever this fallback is. */
 .no-focus-visible .timeline .hour:focus,
-.no-focus-visible .storage-notice button:focus,
-.no-focus-visible .allergy-switch select:focus {
+.no-focus-visible .storage-notice button:focus {
   outline: 2px solid var(--accent, #b3ffff);
   outline-offset: 2px;
 }
