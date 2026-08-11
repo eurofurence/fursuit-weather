@@ -4,7 +4,7 @@
 window.EFW_I18N = (function () {
   const STRINGS = {
     en: {
-      'app.heading': 'Weather',
+      'app.heading': 'Weather companion',
       'app.offline': 'Offline',
       'app.error': 'Could not load weather data',
       'app.retry': 'Retrying shortly…',
@@ -16,6 +16,7 @@ window.EFW_I18N = (function () {
 
       'fsi.heading': 'Fursuiting Index',
       'fsi.hour': 'forecast hour',
+      'fsi.measured': 'measured',
       'fsi.next24': 'Next 24 hours · tap a bar for details',
       'fsi.best': 'Best stretch',
       'fsi.worst': 'Worst stretch',
@@ -27,7 +28,11 @@ window.EFW_I18N = (function () {
       'fsi.scoreHeader': 'Score',
       'fsi.explainSummary': 'How is this calculated?',
       'fsi.explainBody':
-        'The Index ranks the ability to be in a fursuit outdoors, from 0 to 10. It weighs heat stress from the wet-bulb temperature plus sun load. Wet-bulb is the coolest your body can get by sweating, so it reads lower than the air temperature — and the closer the two are, the less the sweating helps, which is exactly what a suit has to cope with. Dew point is a separate figure and says how clammy the air feels: above about 15 °C it starts to feel muggy. Official DWD warnings do not change the score: they are marked on the bars over the hours they cover, so you can judge them yourself.',
+        'The Index ranks the ability to be in a fursuit outdoors, from 0 to 10. It weighs heat stress from the wet-bulb temperature plus sun load, as well as temperature and wind and forecasted rain. Wet-bulb is the temperature your body can get cool down by sweating, so it reads lower than the air temperature. And the closer the two are, the less sweating helps. Dew point is a separate figure and says how clammy the air feels: Usually above 15 °C is uncomfortable. DWD warnings don\'t change the score, leaving you to judge.',
+      'fsi.weightsHeading': 'How much each part counts',
+      'fsi.weightsNote':
+        'Beyond the weighting, there are other limits that adjust the Index. Dangerous heat (>36°C/96°F) sets the Index to 0, for example.',
+      'fsi.weightsAlt': 'Share of the score carried by each part: {parts}.',
 
       'band.excellent': 'Excellent',
       'band.good': 'Good',
@@ -45,6 +50,12 @@ window.EFW_I18N = (function () {
       'now.gusts': 'Gusts',
       'now.rain1h': 'Rain (last hour)',
       'now.pressure': 'Pressure',
+
+      'info.about': 'What does {term} mean?',
+      'info.wetbulb':
+        'Wet-bulb temperature is the coolest your body can get by sweating. It is always lower than the air temperature, but the closer the two numbers are, the less sweating still helps you, and that is the part a fursuit has to cope with.',
+      'info.dewpoint':
+        'Dew point says how much moisture the air is carrying. Below about 12 °C the air feels dry, from around 15 °C it starts to feel uncomfortable.',
 
       'hour.rain': 'Rain (this hour)',
       'hour.rainChance': 'Chance of rain',
@@ -133,7 +144,7 @@ window.EFW_I18N = (function () {
     },
 
     de: {
-      'app.heading': 'Wetter',
+      'app.heading': 'Wetterbegleiter',
       'app.offline': 'Offline',
       'app.error': 'Wetterdaten konnten nicht geladen werden',
       'app.retry': 'Neuer Versuch in Kürze…',
@@ -145,6 +156,7 @@ window.EFW_I18N = (function () {
 
       'fsi.heading': 'Fursuiting Index',
       'fsi.hour': 'Vorhersagestunde',
+      'fsi.measured': 'gemessen',
       'fsi.next24': 'Nächste 24 Stunden · Balken antippen für Details',
       'fsi.best': 'Bester Zeitraum',
       'fsi.worst': 'Ungünstigster Zeitraum',
@@ -154,9 +166,13 @@ window.EFW_I18N = (function () {
       'fsi.dropping': 'Tiefstwert',
       'fsi.hours': 'Std.',
       'fsi.scoreHeader': 'Punkte',
-      'fsi.explainSummary': 'Wie wird das berechnet?',
+      'fsi.explainSummary': 'Wie wird der Index berechnet?',
       'fsi.explainBody':
-        'Der Index bewertet von 0 bis 10, wie angenehm und sicher es im Fursuit draußen ist. Er gewichtet die Hitzebelastung aus der Feuchtkugeltemperatur und der Sonneneinstrahlung, zusammen mit Wind und Niederschlagsvorhersage. Die Feuchtkugeltemperatur ist der kühlste Wert, den dein Körper durchs Schwitzen noch erreicht — sie liegt deshalb unter der Lufttemperatur, und je näher beide beieinander liegen, desto weniger bringt das Schwitzen. Genau das muss ein Fursuit aushalten. Der Taupunkt ist eine eigene Größe und sagt, wie schwül sich die Luft anfühlt: ab etwa 15 °C wird es klamm. Amtliche DWD-Warnungen verändern den Wert nicht: Sie sind über den betroffenen Stunden an den Balken markiert, damit du sie selbst einschätzen kannst.',
+        'Der Index bewertet von 0 bis 10, wie angenehm und sicher es im Fursuit draußen ist. Er gewichtet die Hitzebelastung aus der Feuchtkugeltemperatur und der Sonneneinstrahlung, zusammen mit Wind und Niederschlagsvorhersage. Die Feuchtkugeltemperatur ist eine Temperatur, den dein Körper durchs Schwitzen  minimal erreichen kann. Sie liegt unter der echten Lufttemperatur, und je näher beide beieinander liegen, desto weniger bringt das Schwitzen. Der Taupunkt ist eine eigene Größe und sagt, wie schwül sich die Luft anfühlt: ab etwa 15 °C wird es klamm. Amtliche DWD-Warnungen verändern den Wert nicht: Sie sind über den betroffenen Stunden an den Balken markiert, damit du sie selbst einschätzen kannst.',
+      'fsi.weightsHeading': 'Wie sehen die Gewichtungen aus?',
+      'fsi.weightsNote':
+        'Über die Gewichtung hinaus gibt es weitere Grenzen, die den Index anpassen. Gefährliche Hitze (>36°C) setzt den Index bspw. auf 0.',
+      'fsi.weightsAlt': 'Anteil der einzelnen Faktoren am Gesamtwert: {parts}.',
 
       'band.excellent': 'Ausgezeichnet',
       'band.good': 'Gut',
@@ -174,6 +190,12 @@ window.EFW_I18N = (function () {
       'now.gusts': 'Böen',
       'now.rain1h': 'Regen (letzte Stunde)',
       'now.pressure': 'Luftdruck',
+
+      'info.about': 'Was bedeutet {term}?',
+      'info.wetbulb':
+        'Die Feuchtkugeltemperatur ist eine Temperatur, den dein Körper durchs Schwitzen  minimal erreichen kann. Sie liegt unter der echten Lufttemperatur, und je näher beide beieinander liegen, desto weniger bringt das Schwitzen',
+      'info.dewpoint':
+        'Der Taupunkt ist eine eigene Größe und sagt, wie schwül sich die Luft anfühlt: ab etwa 15 °C wird es klamm.',
 
       'hour.rain': 'Regen (diese Stunde)',
       'hour.rainChance': 'Regenwahrscheinlichkeit',
@@ -267,15 +289,10 @@ window.EFW_I18N = (function () {
   const ALLERGY_KEY = 'efw.allergy';
   const NOTICE_KEY = 'efw.noticeSeen';
 
-  /* The species DWD publishes a pollen forecast for. '' is "none", which is the
-     default: most visitors have no hay fever and should not be shown a pollen
-     map they never asked for. */
   const ALLERGIES = ['hazel', 'alder', 'birch', 'grasses', 'ragweed'];
 
   const params = new URLSearchParams(location.search);
 
-  /* Set by a page that must not follow the stored preference -- the ConOps
-     board is read by international staff and stays English. */
   let forced = null;
 
   function force(lang) {
@@ -284,12 +301,10 @@ window.EFW_I18N = (function () {
 
   function getLang() {
     if (forced) return forced;
-    // ?lang= wins, so a link can pin the language for info screens and sharing.
     const asked = params.get('lang');
     if (asked && STRINGS[asked]) return asked;
     const stored = localStorage.getItem(LANG_KEY);
     if (stored && STRINGS[stored]) return stored;
-    // First visit: follow the browser, since a German visitor is likely local.
     return (navigator.language || 'en').toLowerCase().startsWith('de') ? 'de' : 'en';
   }
 
@@ -307,8 +322,6 @@ window.EFW_I18N = (function () {
     localStorage.setItem(UNIT_KEY, unit === 'F' ? 'F' : 'C');
   }
 
-  /* Both site languages are 24-hour by convention, so that is the default; the
-     switch exists for the visitors who read a clock the other way. */
   function getClock() {
     const asked = params.get('clock');
     if (asked === '12' || asked === '24') return asked;
@@ -319,8 +332,6 @@ window.EFW_I18N = (function () {
     localStorage.setItem(CLOCK_KEY, clock === '12' ? '12' : '24');
   }
 
-  /* Which pollen the visitor cares about, or '' for none. Pinnable with
-     ?allergy= like the other preferences, so a link can open on it. */
   function getAllergy() {
     const asked = (params.get('allergy') || '').toLowerCase();
     if (ALLERGIES.includes(asked)) return asked;
@@ -333,10 +344,6 @@ window.EFW_I18N = (function () {
     if (ALLERGIES.includes(allergy)) localStorage.setItem(ALLERGY_KEY, allergy);
     else localStorage.removeItem(ALLERGY_KEY); // "none" is the absence of a setting
 
-    // ?allergy= wins over storage, so a link can open on a species -- but once
-    // the reader works the control themselves, a stale pin in the address bar
-    // must not keep overriding them. Drop it, and the URL stops describing a
-    // page that is no longer on screen.
     if (params.has('allergy')) {
       params.delete('allergy');
       const query = params.toString();
@@ -344,11 +351,6 @@ window.EFW_I18N = (function () {
     }
   }
 
-  /* The storage notice, dismissed once and then gone. Keeping that answer is
-     itself a write to the device -- the alternative is showing the same box on
-     every visit, which serves nobody. Everything here is a setting the visitor
-     asked for; there is nothing to consent to, so the notice informs rather
-     than asks. See /privacy. */
   function noticeSeen() {
     try {
       return localStorage.getItem(NOTICE_KEY) === '1';
@@ -362,7 +364,7 @@ window.EFW_I18N = (function () {
     try {
       localStorage.setItem(NOTICE_KEY, '1');
     } catch (error) {
-      /* Nothing to do -- it will simply appear again next time. */
+      /* Nothing to do. it will simply appear again next time. */
     }
   }
 
@@ -420,14 +422,14 @@ window.EFW_I18N = (function () {
 
   /** Convert a Celsius value for display, honouring the unit preference. */
   function temp(celsius, digits = 1) {
-    if (celsius === null || celsius === undefined) return '–';
+    if (celsius === null || celsius === undefined) return '-';
     const value = getUnit() === 'F' ? celsius * 1.8 + 32 : celsius;
     return `${value.toFixed(digits)} °${getUnit()}`;
   }
 
-  /** Same, but without a space -- for compact places like the day rows. */
+  /** Same, but without a space. for compact places like the day rows. */
   function tempShort(celsius) {
-    if (celsius === null || celsius === undefined) return '–';
+    if (celsius === null || celsius === undefined) return '-';
     const value = getUnit() === 'F' ? celsius * 1.8 + 32 : celsius;
     return `${Math.round(value)}°`;
   }

@@ -32,9 +32,24 @@ window.EFW = (function () {
     return SCALE;
   }
 
-  /** Relative luminance per WCAG 2.1. */
-  function luminance(hex) {
-    const rgb = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const DARK_INK = '#10161d';
+
+  /* #abc or #aabbcc, in either case, with or without the hash. Anything else --
+     a named colour, an rgb() string, a field that never arrived -- is not
+     something this file can measure, and it must say so rather than hand back
+     numbers built out of NaN. */
+  function normaliseHex(color) {
+    if (typeof color !== 'string') return null;
+    const hex = color.trim().replace(/^#/, '');
+    if (/^[0-9a-f]{3}$/i.test(hex)) return hex.replace(/./g, (c) => c + c);
+    return /^[0-9a-f]{6}$/i.test(hex) ? hex : null;
+  }
+
+  /** Relative luminance per WCAG 2.1, or NaN if the colour cannot be read. */
+  function luminance(color) {
+    const hex = normaliseHex(color);
+    if (!hex) return NaN;
+    const rgb = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
     const [r, g, b] = rgb.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
     return 0.2126 * r + 0.7152 * g + 0.0722 * b;
   }
@@ -44,12 +59,23 @@ window.EFW = (function () {
    * better against the fill. The index colours run from hot pink through amber
    * to green, and amber in particular is unreadable under white text, so this
    * has to be measured rather than assumed.
+   *
+   * An unreadable colour returns dark ink, and the reason matters: every colour
+   * on the index scale is a light one, so dark is the safe answer for all of
+   * them. It used to be the opposite by accident -- luminance() came back NaN,
+   * every comparison against NaN is false, and the function fell through to
+   * white. That put white text on a pale panel, the one result this whole
+   * function exists to prevent, and it did it silently.
    */
-  function contrastText(hex) {
-    const l = luminance(hex);
+  function contrastText(color) {
+    const l = luminance(color);
+    if (!Number.isFinite(l)) {
+      console.warn('EFW: cannot read panel colour %o, using dark ink', color);
+      return DARK_INK;
+    }
     const onDark = (l + 0.05) / 0.05; // contrast against #000
     const onLight = 1.05 / (l + 0.05); // contrast against #fff
-    return onDark >= onLight ? '#10161d' : '#ffffff';
+    return onDark >= onLight ? DARK_INK : '#ffffff';
   }
 
   /** The start of the hour an ISO timestamp falls in, as epoch milliseconds. */

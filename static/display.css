@@ -2,6 +2,10 @@
    Fixed to the viewport, high contrast, readable across a room. */
 
 :root {
+  /* Same reason as style.css: the board is dark, so say so and stop the browser
+     assuming otherwise. */
+  color-scheme: dark;
+
   --blue-black: #1a2039;
   --midnight-teal: #222b54;
   --midnight-green: #143b4d;

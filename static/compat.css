@@ -62,6 +62,17 @@
 .no-color-mix .subscores .bar { background: rgba(0, 0, 0, 0.18); }
 .no-color-mix .fsi-caps { background: rgba(0, 0, 0, 0.16); }
 .no-color-mix .hour-detail { background: rgba(0, 0, 0, 0.14); }
+.no-color-mix .stat-note { background: rgba(0, 0, 0, 0.14); }
+
+/* Same black-over-the-tint reasoning, but stepped: the ring is four strengths of
+   one ink, and without the mix every segment would come out the same nothing.
+   The alphas are the --step percentages of style.css read as black. */
+.no-color-mix .weights .s1 { --flat: rgba(0, 0, 0, 0.9); }
+.no-color-mix .weights .s2 { --flat: rgba(0, 0, 0, 0.66); }
+.no-color-mix .weights .s3 { --flat: rgba(0, 0, 0, 0.45); }
+.no-color-mix .weights .s4 { --flat: rgba(0, 0, 0, 0.3); }
+.no-color-mix .weights .seg { stroke: var(--flat); }
+.no-color-mix .weights-legend .swatch { background: var(--flat); }
 
 .no-color-mix .timeline .hour.is-empty > .fsi-bar {
   background: repeating-linear-gradient(
@@ -113,9 +124,9 @@
 .no-flex-gap .skeleton .sk-row > * + * { margin-left: 1.1rem; }
 .no-flex-gap .site-header h1 .title > * + * { margin-left: 0.5rem; }
 .no-flex-gap .fsi-top > * + * { margin-left: 1.1rem; }
-.no-flex-gap .head-row > * + * { margin-left: 1rem; }
-.no-flex-gap .head-controls > * + * { margin-left: 0.7rem; }
-.no-flex-gap .allergy-switch > * + * { margin-left: 0.35rem; }
+/* The controls stack now, so their gap is a vertical one. */
+.no-flex-gap .head-controls > * + * { margin-top: 0.4rem; }
+.no-flex-gap .allergy-switch > * + * { margin-left: 0.3rem; }
 .no-flex-gap .radar-controls > * + * { margin-left: 1rem; }
 .no-flex-gap .radar-controls label > * + * { margin-left: 0.4rem; }
 .no-flex-gap .model-tabs > * + * { margin-left: 0.4rem; }
@@ -123,6 +134,7 @@
 .no-flex-gap .model-legend .row > * + * { margin-left: 0.6rem; }
 .no-flex-gap .storage-notice .actions > * + * { margin-left: 1rem; }
 .no-flex-gap .hour-detail .head > * + * { margin-left: 0.7rem; }
+.no-flex-gap .weights-body > * + * { margin-left: 1.1rem; }
 .no-flex-gap .warnings-summary > summary > * + * { margin-left: 0.5rem; }
 
 /* The hourly bars: the one gap on the page that carries meaning rather than

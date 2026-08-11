@@ -23,7 +23,7 @@ DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
 class Event:
     """The convention edition this instance is running for."""
 
-    name: str = "Eurofurence 30: Fantastic Furry Festival"
+    name: str = "Eurofurence 30 - Hamburg CCH"
     short_name: str = "EF30"
 
 

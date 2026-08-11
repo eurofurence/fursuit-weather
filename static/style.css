@@ -4,6 +4,20 @@
    Author: laffiesphere. */
 
 :root {
+  /* Say out loud that this is a dark page. Without it the browser assumes a
+     light one whatever the colours actually are: native controls -- the allergy
+     menu, the radar checkbox, the scrollbars -- come up in light chrome against
+     the palette, and a phone set to day mode is free to apply its own
+     "readability" pass on top of a page it thinks is light. Declared, none of
+     that happens. This is not a theme switch: the festival palette is dark, and
+     the site stays dark either way. */
+  color-scheme: dark;
+  /* The one control colour color-scheme does not set: a ticked checkbox would
+     otherwise be the browser's own blue, the only colour on the page that is
+     not the festival's. Set here rather than on the one checkbox we have, so
+     anything added later inherits it. */
+  accent-color: var(--accent);
+
   /* Festival palette */
   --ef-green: #006666;
   --midnight-green: #143b4d;
@@ -44,6 +58,21 @@
 
 /* `hidden` must beat any author `display:` rule on the same element. */
 [hidden] { display: none !important; }
+
+/* Off the screen but still in the accessibility tree, for the word behind an
+   icon. `display: none` would take it out of both, which is the whole point of
+   not using it here. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
 
 body {
@@ -164,12 +193,17 @@ body {
   letter-spacing: -0.01em;
   line-height: 1.15;
 }
+
 /* The event over the heading: an eyebrow, so it needs its own air rather than
    sitting on the cap-line of the word below it. The trailing letter-space of
-   the last character would also push it out of line with "Weather". */
-.site-header h1 .event {
+   the last character would also push it out of line with the heading.
+
+   Matched loosely rather than as `h1 .event`, because it is not always in the
+   heading: on this page it is a sibling of the switches so the two can share a
+   line, while /privacy and /api-docs still nest it in their own h1. */
+.site-header .event {
   display: block;
-  margin-bottom: 0.3rem;
+  margin: 0 0 0.3rem;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.18em;
@@ -178,16 +212,11 @@ body {
   text-transform: uppercase;
   color: var(--hot-pink);
 }
-/* Heading and place share a baseline; the place is the quieter of the two. */
-.site-header h1 .title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 0.5rem; }
-.site-header h1 .where {
-  font-size: 0.95rem;
-  font-weight: 500;
-  letter-spacing: 0;
-  color: var(--muted);
-}
-.site-header h1 .where:empty { display: none; }
-.site-header h1 .where::before { content: '· '; }
+/* The place rides in the eyebrow with the event and reads as one line with it,
+   same weight and same colour. The colon comes from ::before so it can never be
+   left behind at the start of a line of its own. */
+.site-header .where:empty { display: none; }
+.site-header .where::before { content: ': '; }
 
 .subtitle { margin: 0.4rem 0 0; color: var(--muted); font-size: 0.9rem; }
 
@@ -321,6 +350,55 @@ body {
 .explain summary { cursor: pointer; font-weight: 600; }
 .explain p { margin: 0.5rem 0 0; }
 
+/* ---------- The weights, as a ring ---------- */
+
+/* One ink at four strengths: the panel around this is tinted with the current
+   score, so any fixed set of hues would be readable on some scores and not on
+   others. --ink is already the colour picked to contrast with whatever the
+   tint is, which makes the ramp correct on all of them by construction. */
+.weights .s1 { --step: 90%; }
+.weights .s2 { --step: 66%; }
+.weights .s3 { --step: 45%; }
+.weights .s4 { --step: 30%; }
+
+.weights { margin: 0.9rem 0 0; padding: 0; }
+
+.weights figcaption {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+.weights-body { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 1.1rem; margin-top: 0.6rem; }
+
+.weights-pie { flex: 0 0 auto; width: 116px; }
+.weights-pie svg { display: block; width: 100%; height: auto; }
+.weights .seg { fill: none; stroke: color-mix(in srgb, var(--ink, var(--text)) var(--step), transparent); }
+
+/* Capped rather than stretched: filling the card would leave a hand's width of
+   nothing between each name and the number it belongs to. */
+.weights-legend {
+  flex: 1 1 11rem;
+  max-width: 20rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.weights-legend li { display: grid; grid-template-columns: 0.7rem 1fr auto; align-items: center; gap: 0.55rem; }
+.weights-legend .swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink, var(--text)) var(--step), transparent);
+}
+.weights-legend .pct { font-variant-numeric: tabular-nums; font-weight: 700; }
+
+.weights-note { font-size: 0.76rem; opacity: 0.75; }
+
 /* ---------- Hourly timeline ---------- */
 
 .timeline {
@@ -445,6 +523,60 @@ body {
 .now .item .k { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); overflow-wrap: break-word; }
 .now .item .v { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .now .item .v small { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+
+/* Sits in the run of the label rather than beside it, so a long German
+   compound still wraps where it wants to and the (i) follows the last line. */
+.now .item .k .info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25em;
+  height: 1.25em;
+  padding: 0;
+  margin-left: 0.1em;
+  /* Centred on the label rather than sat on its baseline. `middle` is measured
+     against the x-height, but these labels are uppercase, so the optical middle
+     is half a cap up from there -- hence the nudge. Both are in em, so the badge
+     stays put whatever size the label is set at. */
+  vertical-align: middle;
+  position: relative;
+  top: -0.09em;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.95em;
+  line-height: 1;
+  text-transform: none;
+  cursor: pointer;
+  opacity: 0.8;
+}
+.now .item .k .info:hover { opacity: 1; }
+/* Open: the letter is knocked out of the ink. Named rather than currentColor --
+   currentColor in `background` resolves against this element's own colour, which
+   the next line is changing, so the dot would come out the colour of the page.
+   The letter takes the score's tint on the index panel, the only colour there
+   guaranteed to contrast with the ink; elsewhere the card behind it serves. */
+.now .item .k .info[aria-expanded='true'] {
+  background: var(--ink, var(--muted));
+  color: var(--fsi, var(--card));
+  opacity: 1;
+}
+
+/* Full width under the figures: in an 8rem column a definition would come out
+   three words to the line. Each one names its own term, so it stays attached
+   to the (i) that opened it even at the foot of the grid. */
+.stat-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border-left: 3px solid currentColor;
+  background: color-mix(in srgb, var(--ink, #000) 14%, transparent);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
 
 /* ---------- Daily rows, each with its own hourly chart ---------- */
 
@@ -604,27 +736,52 @@ body {
 
 /* ---------- Language / unit toggles ---------- */
 
-.head-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+/* Under the heading rather than beside it, stacked and right-aligned: the
+   language switch first, the allergy picker beneath it. Alongside the heading
+   they were the widest thing in the header and pushed it around; below it they
+   are two small pills against the right edge and the heading owns the line. */
+.head-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+/* One height for both pills, stated rather than left to two different controls
+   agreeing by accident: a <select> ignores line-height in most engines, so
+   matching the font and padding of a <button> still leaves them a pixel or two
+   apart -- which is exactly the gap the eye picks up when they sit stacked. */
+.head-controls > * { min-height: 2rem; }
 
-/* Allergy picker and language buttons share the top-right corner. They wrap
-   onto their own line on a narrow screen rather than squeezing the heading. */
-.head-controls { display: flex; align-items: center; gap: 0.5rem 0.7rem; flex-wrap: wrap; justify-content: flex-end; }
-
-.allergy-switch { display: inline-flex; align-items: center; gap: 0.35rem; }
-.allergy-switch .k { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
-.allergy-switch select {
+/* One pill rather than a label beside a menu. The emoji says what the word
+   "Allergy" used to, in a fraction of the width, and the species stays on show
+   so the control still answers "which one is on" without being opened. */
+.allergy-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0 0.4rem 0 0.55rem;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--card);
+  cursor: pointer;
+}
+.allergy-switch:hover { border-color: var(--muted); }
+/* The pill carries the focus ring for the select inside it, so the outline
+   follows the shape the reader actually sees. */
+.allergy-switch:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.allergy-switch .icon { font-size: 0.95rem; line-height: 1; }
+.allergy-switch select {
+  border: 0;
+  background: none;
   color: var(--text);
   font: inherit;
   font-size: 0.8rem;
   font-weight: 600;
-  padding: 0.3rem 0.5rem;
+  padding: 0.25rem 0;
   cursor: pointer;
 }
-.allergy-switch select:hover { border-color: var(--muted); }
-.allergy-switch select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.allergy-switch select:focus-visible { outline: none; }
 /* The dark palette is the site's own; the menu itself is drawn by the browser,
    so its options need telling too or they come up black on black. */
 .allergy-switch option { background: var(--card); color: var(--text); }

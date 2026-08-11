@@ -1,4 +1,4 @@
-/* Eurofurence Weather -- frontend. Plain ES2020, no build step, no framework.
+/* Eurofurence Weather
    Author: laffiesphere. */
 
 const REFRESH_MS = 5 * 60 * 1000;
@@ -10,27 +10,16 @@ const T = (key, vars) => EFW_I18N.T(key, vars);
 const fmt = (value, digits = 0, unit = '') =>
   value === null || value === undefined ? '–' : `${Number(value).toFixed(digits)}${unit}`;
 
-/* Tolerate a missing element instead of throwing. A stale cached script that
-   looks up an id the markup no longer has should degrade to one blank field,
-   not take down the entire page. */
 function text(el, value) {
   if (!el) {
-    console.warn('EFW: missing element for text update', value);
+    console.warn('EF Weather: missing element for text update', value);
     return;
   }
   el.textContent = value;
 }
 
-let latest = null; // last good payload, so toggles can re-render without a fetch
-
-/* How much of the day that has already gone by the headline strip keeps for
-   context. The API sends every elapsed hour so the day cards can show a whole
-   day; unbounded, the strip would reach 47 bars by late evening. */
+let latest = null; 
 const PAST_CONTEXT_HOURS = 6;
-
-/* How far past its build time a payload may be before the page says so. The
-   frontend refreshes every five minutes, so anything older than this did not
-   come from a reachable server -- it came out of the offline cache in sw.js. */
 const STALE_AFTER_MS = 15 * 60 * 1000;
 
 /* ---------------------------------------------------------------- warnings */
@@ -39,9 +28,6 @@ function renderWarnings(warnings) {
   const host = $('warnings');
   host.innerHTML = '';
   if (!warnings.length) return;
-
-  // One compact line by default -- the full official wording is long, and it is
-  // already flagged on the index bars. Expand for the detail.
   const worst = warnings[0];
   const advance = warnings.filter((w) => w.advance).length;
 
@@ -110,8 +96,6 @@ function warningCard(warning) {
     article.append(note);
   }
 
-  // DWD issues the wording in German only; show it verbatim below the label
-  // and tag it so screen readers switch pronunciation.
   for (const [value, className] of [
     [warning.headline, 'official'],
     [warning.description, ''],
@@ -145,17 +129,29 @@ function renderFSI(data) {
     return;
   }
 
-  // The whole panel takes the colour of the score, with ink picked for
-  // contrast so yellow and green stay readable.
+  /* The tint and the ink chosen to read against it are one decision, so they go
+     on together. Set the other way round, anything that went wrong between the
+     two lines left the panel wearing its colour with no ink to match -- which
+     falls back to the page's near-white text on a pale card. Ink first, and the
+     worst case is an untinted panel that is still perfectly readable. */
+  const ink = EFW.contrastText(fsi.color);
+  card.style.setProperty('--ink', ink);
   card.style.setProperty('--fsi', fsi.color);
-  card.style.setProperty('--ink', EFW.contrastText(fsi.color));
 
   text($('fsi-score')?.querySelector('.value'), fsi.score.toFixed(1));
   text($('fsi-label'), fsi.label);
   text($('fsi-advice'), fsi.advice);
 
+  /* The headline is scored from the station report -- the same reading "Right
+     now" shows -- while the bars underneath are MOSMIX. The two disagree now
+     and then, and calling a measurement a "forecast hour" made that read as a
+     contradiction rather than as two different things. Say which this one is.
+     The station report does go missing, and then this number does come from the
+     forecast, so the wording follows the source rather than assuming. */
   const observed = data.current ? data.current.time_local : null;
-  text($('fsi-time'), observed ? `· ${T('fsi.hour')} ${EFW_I18N.time(observed)}` : '');
+  const measured = data.current && data.current.source === 'poi';
+  const when = T(measured ? 'fsi.measured' : 'fsi.hour');
+  text($('fsi-time'), observed ? `· ${when} ${EFW_I18N.time(observed)}` : '');
 
   const list = $('subscores');
   list.innerHTML = '';
@@ -165,8 +161,6 @@ function renderFSI(data) {
 
     const name = document.createElement('span');
     name.className = 'name';
-    // Name only: beside a 0-10 bar the weight read as a second, competing
-    // score rather than as how much this line counts towards the total.
     name.textContent = entry.label;
 
     const bar = document.createElement('span');
@@ -187,6 +181,94 @@ function renderFSI(data) {
   const caps = $('fsi-caps');
   caps.hidden = !fsi.caps_applied.length;
   text(caps, fsi.caps_applied.join(' · '));
+
+  renderWeights(fsi.subscores);
+}
+
+/* ------------------------------------------- how much each part of it counts */
+
+/* Geometry of the ring, in the units of its own 100x100 viewBox. The gap is
+   the card showing through between segments: a drawn divider would have to
+   pick a colour, and the card's colour changes with the score. */
+const PIE = { size: 100, radius: 34, width: 19, gap: 1.6 };
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+
+function renderWeights(subscores) {
+  const figure = $('weights');
+  const host = $('weights-pie');
+  const legend = $('weights-legend');
+  if (!figure || !host || !legend) return; // cached markup from before this existed
+
+  const parts = Object.keys(subscores)
+    .map(function (key) {
+      return { label: subscores[key].label, weight: subscores[key].weight || 0 };
+    })
+    .filter(function (part) {
+      return part.weight > 0;
+    })
+    .sort(function (a, b) {
+      return b.weight - a.weight;
+    });
+
+  const total = parts.reduce(function (sum, part) {
+    return sum + part.weight;
+  }, 0);
+
+  figure.hidden = parts.length < 2 || total <= 0;
+  if (figure.hidden) return;
+
+  const half = PIE.size / 2;
+  const circumference = 2 * Math.PI * PIE.radius;
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${PIE.size} ${PIE.size}`);
+  svg.setAttribute('role', 'img');
+
+  const ring = document.createElementNS(SVG_NS, 'g');
+  ring.setAttribute('transform', `rotate(-90 ${half} ${half})`);
+  svg.append(ring);
+
+  let start = 0; // distance along the ring the next segment begins at
+  const spoken = [];
+  legend.innerHTML = '';
+
+  for (let index = 0; index < parts.length; index += 1) {
+    const share = parts[index].weight / total;
+    const arc = share * circumference;
+    const drawn = Math.max(arc - PIE.gap, 0.5);
+    const step = `s${Math.min(index + 1, 4)}`;
+
+    const segment = document.createElementNS(SVG_NS, 'circle');
+    segment.setAttribute('class', `seg ${step}`);
+    segment.setAttribute('cx', half);
+    segment.setAttribute('cy', half);
+    segment.setAttribute('r', PIE.radius);
+    segment.setAttribute('stroke-width', PIE.width);
+    segment.setAttribute('stroke-dasharray', `${drawn} ${circumference - drawn}`);
+    segment.setAttribute('stroke-dashoffset', -(start + PIE.gap / 2));
+    ring.append(segment);
+    start += arc;
+
+    const percent = `${Math.round(share * 100)} %`;
+    spoken.push(`${parts[index].label} ${percent}`);
+
+    const row = document.createElement('li');
+    const swatch = document.createElement('span');
+    swatch.className = `swatch ${step}`;
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = parts[index].label;
+    const value = document.createElement('span');
+    value.className = 'pct';
+    value.textContent = percent;
+    row.append(swatch, name, value);
+    legend.append(row);
+  }
+
+  svg.setAttribute('aria-label', T('fsi.weightsAlt', { parts: spoken.join(', ') }));
+  host.innerHTML = '';
+  host.append(svg);
 }
 
 /* Purely cosmetic: one particular score earns a video. */
@@ -215,20 +297,52 @@ function renderLegend(host) {
 
 /* ------------------------------------------------------- current + daily */
 
-/** The shared "label over value" grid used by both "Right now" and the bars. */
+/* Every explanation panel needs an id of its own for aria-controls, and the
+   grids are rebuilt on every refresh, so the counter runs for the session. */
+let noteSeq = 0;
+
 function statGrid(host, items) {
   host.innerHTML = '';
-  for (const [key, value] of items) {
+
+  const note = document.createElement('p');
+  note.className = 'stat-note';
+  note.id = `stat-note-${(noteSeq += 1)}`;
+  note.hidden = true;
+  let open = null; // the button whose explanation is showing, if any
+
+  for (const [key, value, infoKey] of items) {
     const item = document.createElement('div');
     item.className = 'item';
     const k = document.createElement('div');
     k.className = 'k';
     k.textContent = key;
+    if (infoKey) k.append(document.createTextNode(' '), infoButton(key, infoKey));
     const v = document.createElement('div');
     v.className = 'v';
     v.textContent = value;
     item.append(k, v);
     host.append(item);
+  }
+
+  host.append(note);
+
+  function infoButton(term, infoKey) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'info';
+    button.textContent = 'i';
+    button.setAttribute('aria-label', T('info.about', { term: term }));
+    button.setAttribute('aria-expanded', 'false');
+    button.setAttribute('aria-controls', note.id);
+    button.addEventListener('click', function () {
+      const show = open !== button; // the same (i) again closes it
+      if (open) open.setAttribute('aria-expanded', 'false');
+      open = show ? button : null;
+      button.setAttribute('aria-expanded', show ? 'true' : 'false');
+      note.textContent = show ? T(infoKey) : '';
+      note.hidden = !show;
+    });
+    return button;
   }
 }
 
@@ -240,8 +354,8 @@ function renderNow(current, fsi) {
   const items = [
     [T('now.conditions'), `${current.weather.icon || ''} ${current.weather.text || '–'}`.trim()],
     [T('now.temperature'), EFW_I18N.temp(current.temperature)],
-    [T('now.wetbulb'), EFW_I18N.temp(fsi?.wetbulb)],
-    [T('now.dewpoint'), EFW_I18N.temp(fsi?.dewpoint)],
+    [T('now.wetbulb'), EFW_I18N.temp(fsi?.wetbulb), 'info.wetbulb'],
+    [T('now.dewpoint'), EFW_I18N.temp(fsi?.dewpoint), 'info.dewpoint'],
     [T('now.humidity'), fmt(current.humidity, 0, ' %')],
     [
       T('now.wind'),
@@ -255,32 +369,16 @@ function renderNow(current, fsi) {
   statGrid(host, items);
 }
 
-/* ------------------------------------------- conditions behind a single bar */
+/* ---- conditions behind single bar */
 
-/* One hour selected at a time, and it belongs to the chart it was picked in:
-   the same hour appears on the headline strip *and* in today's card, so a
-   selection held by time alone opened two panels for one click.
 
-   The key is what survives a refresh -- the day cards are rebuilt from scratch
-   every five minutes, so their elements cannot be the identity. */
 let picked = null; // ISO time of the selected hour
 let pickedChart = null; // which chart it was picked in
 let charts = []; // {key, strip, detail, series}, rebuilt on every render
 let conditionsByTime = new Map(); // ISO time -> the enriched entry from fsi_series
 
-/* The day cards carry a lean series (score, colour, icon); the conditions for
-   the same hour live in fsi_series. Join them on the timestamp. */
 const hourEntry = (entry) => ({ ...entry, ...(conditionsByTime.get(entry.time) || {}) });
 
-/**
- * The panel the conditions open into.
- *
- * index.html carries one, but a browser holding a cached copy of the markup
- * from before this feature existed would not -- and a fresh app.js reaching for
- * an id that is not there is the exact failure the cache headers in app/main.py
- * exist to prevent. Build it instead of trusting the markup: then the feature
- * works whatever version of the HTML the browser happens to be holding.
- */
 function ensureDetail(id, strip) {
   const existing = $(id);
   if (existing) return existing;
@@ -389,8 +487,8 @@ function renderHourDetail(host, entry) {
   grid.className = 'now';
   statGrid(grid, [
     [T('now.temperature'), EFW_I18N.temp(entry.temperature)],
-    [T('now.wetbulb'), EFW_I18N.temp(entry.wetbulb)],
-    [T('now.dewpoint'), EFW_I18N.temp(entry.dewpoint)],
+    [T('now.wetbulb'), EFW_I18N.temp(entry.wetbulb), 'info.wetbulb'],
+    [T('now.dewpoint'), EFW_I18N.temp(entry.dewpoint), 'info.dewpoint'],
     [T('now.humidity'), fmt(entry.humidity, 0, ' %')],
     [
       T('now.wind'),
@@ -1332,7 +1430,12 @@ function render(data) {
   }
   applySelection(); // a panel left open survives the five-minute refresh
 
-  if (data.event?.name) text($('event-name'), data.event.name);
+  // The short name, not the full one: "EF30" is what the header has room for,
+  // and config.json already carries both. Falls back to the long name so an
+  // event that never set a short one still gets a heading rather than a blank.
+  const event = data.event || {};
+  const shortName = event.short_name || event.name;
+  if (shortName) text($('event-name'), shortName);
   text($('where'), data.location.name);
 
   // The subtitle is for trouble only -- it used to carry "observation HH:MM",

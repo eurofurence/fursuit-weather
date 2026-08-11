@@ -14,27 +14,39 @@
 <div class="progress" id="progress" role="progressbar" aria-label="Loading" hidden><span class="fill"></span></div>
 
 <header class="site-header">
-  <div class="head-row">
-    <h1>
-      <span class="event" id="event-name">EF 30: Fantastic Furry Festival</span>
-      <span class="title">
-        <span data-i18n="app.heading">Weather</span>
-        <span class="where" id="where"></span>
-      </span>
-    </h1>
-    <div class="head-controls">
-      <!-- Which pollen the reader reacts to. Options are filled in from
-           /api/model, which knows the seasons: a species DWD is not publishing
-           today is still listed, but marked, rather than quietly missing. -->
-      <label class="allergy-switch" id="allergy-switch" hidden>
-        <span class="k" data-i18n="pollen.label">Allergy</span>
-        <select id="allergy-select"></select>
-      </label>
-      <div class="lang-switch" role="group" id="lang-switch" aria-label="Language">
-        <button type="button" data-lang="en">EN</button>
-        <button type="button" data-lang="de">DE</button>
-      </div>
+  <!-- Short name and place on one line with the switches, the heading on its
+       own line under them. The full festival name ran to three lines of tracked
+       caps on a phone before any weather was on screen, and the place sat below
+       the heading behind a separator that became a dangling "·" the moment it
+       wrapped. The long name is not on the page any more: this is the weather
+       companion to the convention rather than its front door, and the meta
+       description above still carries it for anything that indexes us.
+
+       The eyebrow is a sibling of the switches rather than part of the heading
+       so the two can share a line -- which leaves the heading the full width,
+       and it needs it: nested inside, "Weather companion" broke across two
+       lines on a phone with the switch stranded in the gap beside it. -->
+  <p class="event"><span id="event-name">EF30</span><span class="where" id="where"></span></p>
+  <h1 class="title" data-i18n="app.heading">Weather companion</h1>
+
+  <div class="head-controls">
+    <div class="lang-switch" role="group" id="lang-switch" aria-label="Language">
+      <button type="button" data-lang="en">EN</button>
+      <button type="button" data-lang="de">DE</button>
     </div>
+    <!-- Which pollen the reader reacts to. Options are filled in from
+         /api/model, which knows the seasons: a species DWD is not publishing
+         today is still listed, but marked, rather than quietly missing.
+
+         The emoji stands in for the word "Allergy": the label cost more width
+         than the menu it named. It is decoration, so it is hidden from anything
+         that reads rather than looks, and the real word is carried alongside it
+         where only a screen reader will find it. -->
+    <label class="allergy-switch" id="allergy-switch" hidden>
+      <span class="icon" aria-hidden="true">🤧</span>
+      <span class="visually-hidden" data-i18n="pollen.label">Allergy</span>
+      <select id="allergy-select"></select>
+    </label>
   </div>
   <p class="subtitle" id="subtitle">Loading…</p>
 </header>
@@ -80,12 +92,23 @@
     <details class="explain">
       <summary data-i18n="fsi.explainSummary">How is this calculated?</summary>
       <p data-i18n="fsi.explainBody"></p>
+      <!-- The words above say which parts count; this says how much. Drawn from
+           the weights the API publishes alongside the sub-scores, so the picture
+           cannot drift away from the arithmetic that produced the number. -->
+      <figure class="weights" id="weights" hidden>
+        <figcaption data-i18n="fsi.weightsHeading">How much each part counts</figcaption>
+        <div class="weights-body">
+          <div class="weights-pie" id="weights-pie"></div>
+          <ul class="weights-legend" id="weights-legend"></ul>
+        </div>
+        <p class="weights-note" data-i18n="fsi.weightsNote"></p>
+      </figure>
     </details>
   </section>
 
   <!-- Current conditions -->
   <section class="card" aria-labelledby="now-heading">
-    <h2 id="now-heading" data-i18n="now.heading">Right now</h2>
+    <h2 id="now-heading" data-i18n="now.heading">Right now in Hamburg</h2>
     <div class="now" id="now"></div>
   </section>
 
