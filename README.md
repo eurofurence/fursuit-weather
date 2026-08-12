@@ -2,6 +2,7 @@
 
 Eurofurence Weather is an easy to use tool, that allows convention goers at EF in Hamburg to quickly assess the ability to hang outside either with or without suit.
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/B0B6BCXY7)
 ![alt text](media/Site_preview.jpg "Site preview")
 
 My friends and I have always looked for an easy method to answer the following the question: 
