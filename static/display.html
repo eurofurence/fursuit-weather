@@ -21,6 +21,16 @@
     <div class="clock" id="clock">--:--:--</div>
   </header>
 
+  <!-- Anything the shift needs to know before it reads a number. Empty and
+       invisible on an ordinary day; above the index when it is not, because a
+       heat warning outranks the score it explains.
+
+       DWD's own warnings and this site's pollen reading both land here, kept
+       visibly apart: one is an official warning, the other is our reading of a
+       research forecast, and a board that blurs the two is worse than a board
+       that shows only the first. -->
+  <section class="alerts" id="alerts" aria-label="Warnings" hidden></section>
+
   <main class="grid">
     <!-- Headline index: the tile itself carries the score colour -->
     <section class="tile score-tile" id="score-tile">
@@ -39,8 +49,11 @@
     <section class="tile wide chart-tile">
       <!-- No "click a bar" here: the board is a monitor unless it was opened
            with ?touch, so on nearly every screen it was an instruction the
-           reader had no way to follow. The legend explains what is drawn. -->
-      <h2>Next 24 hours <span class="tz">— local time, 24 h (am/pm) · grey = past · red line = now</span></h2>
+           reader had no way to follow. And no key to the drawing either: grey
+           for gone and a red line for now are read at a glance from across a
+           room, which is more than could be said for the sentence explaining
+           them. -->
+      <h2>Next 24 hours</h2>
       <div class="timeline" id="timeline" role="group" aria-label="Hourly fursuiting index"></div>
       <p class="legend" id="legend"></p>
     </section>

@@ -346,7 +346,29 @@ function statGrid(host, items) {
   }
 }
 
-function renderNow(current, fsi) {
+/* `place` rather than `location`: the name is taken, and shadowing it here would
+   be a trap for whoever next reaches for the query string in this function. */
+function renderNow(current, fsi, place) {
+  /* Where these numbers were measured and when. The station is a few kilometres
+     out of town, and the reading can be up to an hour old, so both belong in the
+     heading rather than in small print underneath it: "Right now" is only true
+     of somewhere, at some time.
+
+     The station name is the operator's, falling back to the one DWD publishes
+     with the forecast, which is abbreviated ("HAMBURG-FU."). The word "measured"
+     is dropped when the reading is not one: with the station report missing
+     these come from MOSMIX and the hour is a forecast. Same two words as the
+     index panel, which is making the same distinction about the same reading. */
+  const source = $('now-source');
+  if (source) {
+    const station = (place && place.station_name) || '';
+    const when =
+      current && current.time_local
+        ? `${T(current.source === 'poi' ? 'fsi.measured' : 'fsi.hour')} ${EFW_I18N.time(current.time_local)}`
+        : '';
+    text(source, [station, when].filter(Boolean).map((part) => `· ${part}`).join(' '));
+  }
+
   const host = $('now');
   host.innerHTML = '';
   if (!current) return;
@@ -359,9 +381,9 @@ function renderNow(current, fsi) {
     [T('now.humidity'), fmt(current.humidity, 0, ' %')],
     [
       T('now.wind'),
-      `${fmt(current.wind_speed_kmh, 0, ' km/h')}${current.wind_direction_name ? ` ${current.wind_direction_name}` : ''}`,
+      `${EFW_I18N.wind(current.wind_speed_kmh)}${current.wind_direction_name ? ` ${current.wind_direction_name}` : ''}`,
     ],
-    [T('now.gusts'), fmt(current.wind_gust_kmh, 0, ' km/h')],
+    [T('now.gusts'), EFW_I18N.wind(current.wind_gust_kmh)],
     [T('now.rain1h'), fmt(current.precipitation, 1, ' mm')],
     [T('now.pressure'), fmt(current.pressure, 0, ' hPa')],
   ];
@@ -492,9 +514,9 @@ function renderHourDetail(host, entry) {
     [T('now.humidity'), fmt(entry.humidity, 0, ' %')],
     [
       T('now.wind'),
-      `${fmt(entry.wind_speed_kmh, 0, ' km/h')}${entry.wind_direction_name ? ` ${entry.wind_direction_name}` : ''}`,
+      `${EFW_I18N.wind(entry.wind_speed_kmh)}${entry.wind_direction_name ? ` ${entry.wind_direction_name}` : ''}`,
     ],
-    [T('now.gusts'), fmt(entry.wind_gust_kmh, 0, ' km/h')],
+    [T('now.gusts'), EFW_I18N.wind(entry.wind_gust_kmh)],
     [T('hour.rain'), fmt(entry.precipitation, 1, ' mm')],
     [T('hour.rainChance'), fmt(entry.precipitation_prob, 0, ' %')],
   ]);
@@ -569,10 +591,13 @@ function renderDays(days) {
       </span>
       <span class="cond"><span class="icon">${day.weather.icon || ''}</span> ${day.weather.text || ''}</span>
       <span class="temps">${temps}</span>
-      <span class="meta">💧 ${fmt(day.precipitation_prob, 0, '%')} · ☀️ ${fmt(day.sunshine_hours, 0, ' h')} · 💨 ${fmt(
-        day.wind_speed_kmh,
-        0
-      )}–${fmt(day.wind_gust_kmh, 0, ' km/h')}${direction}</span>
+      <span class="meta">💧 ${fmt(day.precipitation_prob, 0, '%')} · ☀️ ${fmt(
+        day.sunshine_hours,
+        0,
+        ' h'
+      )} · 💨 ${EFW_I18N.wind(day.wind_speed_kmh, { unit: false })}–${EFW_I18N.wind(
+        day.wind_gust_kmh
+      )}${direction}</span>
     `;
 
     const strip = document.createElement('div');
@@ -1350,19 +1375,6 @@ function renderLoadNotice() {
   if (!box.hidden) text(box, T(`load.${siteLoad}`));
 }
 
-/* Shown once per device until dismissed. Nothing here is a consent gate: the
-   site sets no cookies and stores only what the visitor chose, so the box tells
-   rather than asks, and the page underneath is fully usable behind it. */
-function initStorageNotice() {
-  const box = $('storage-notice');
-  if (!box || EFW_I18N.noticeSeen()) return;
-  box.hidden = false;
-  $('notice-ok')?.addEventListener('click', () => {
-    EFW_I18N.setNoticeSeen();
-    box.hidden = true;
-  });
-}
-
 /* ------------------------------------------------------------- preferences */
 
 function initPreferences() {
@@ -1374,11 +1386,12 @@ function initPreferences() {
     });
   }
 
-  // Units and clock are conversions of what we already hold, so they redraw
-  // rather than refetch.
+  // Units, clock and wind are conversions of what we already hold, so they
+  // redraw rather than refetch.
   for (const [id, apply] of [
     ['unit-switch', (button) => EFW_I18N.setUnit(button.dataset.unit)],
     ['clock-switch', (button) => EFW_I18N.setClock(button.dataset.clock)],
+    ['wind-switch', (button) => EFW_I18N.setWind(button.dataset.wind)],
   ]) {
     for (const button of $(id).children) {
       button.addEventListener('click', () => {
@@ -1401,13 +1414,11 @@ function syncToggles() {
   for (const button of $('clock-switch').children) {
     button.classList.toggle('active', button.dataset.clock === EFW_I18N.getClock());
   }
+  for (const button of $('wind-switch').children) {
+    button.classList.toggle('active', button.dataset.wind === EFW_I18N.getWind());
+  }
   EFW_I18N.apply();
   renderLoadNotice(); // its text is set in JS, so apply() cannot reach it
-
-  // Send a German reader to the German page. Both are real pages rather than
-  // one page with a switch, so this is a link swap rather than a translation.
-  const privacy = EFW_I18N.getLang() === 'de' ? '/datenschutz' : '/privacy';
-  for (const link of document.querySelectorAll('.privacy-link')) link.href = privacy;
 }
 
 /* ------------------------------------------------------------------- load */
@@ -1431,7 +1442,7 @@ function render(data) {
   });
 
   renderLegend($('legend-days'));
-  renderNow(data.current, data.fsi);
+  renderNow(data.current, data.fsi, data.location);
   renderDays(data.daily);
   renderModelLegend();
   if (modelInfo) {
@@ -1544,7 +1555,6 @@ function initOffline() {
 
 EFW_I18N.apply();
 initPreferences();
-initStorageNotice();
 initOffline();
 load();
 setInterval(load, REFRESH_MS);

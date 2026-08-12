@@ -118,9 +118,9 @@ def build_middleware(limiter: SlidingWindowLimiter, path_prefix: str = "/api/"):
         allowed, remaining, retry_after = limiter.check(client_key(request))
         if not allowed:
             # The hash, not the address: this line is the one piece of the
-            # system that would otherwise write a visitor's IP to disk, and the
-            # site promises on /privacy that nothing does. It still tells one
-            # persistent offender apart from a crowd, which is all it was for.
+            # system that would otherwise write a visitor's IP to disk, and
+            # nothing here is meant to. It still tells one persistent offender
+            # apart from a crowd, which is all it was for.
             logger.info(
                 "Rate limit hit by client %s on %s",
                 anonymised(client_key(request))[:8],

@@ -121,9 +121,18 @@ def draw_floor(key: str) -> float:
 #: reading of common European aerobiological practice, not something DWD
 #: publishes -- exact figures vary between national services, which is why they
 #: are overridable in config.json.
+#: The middle number of each row is DWD's own "hohe Belastung" edge, from the
+#: Pollenflug-Gefahrenindex: hazel and alder >100, birch >50, grasses >30,
+#: ragweed >10. Keeping that edge exactly where DWD puts it is what lets the
+#: board raise a warning at "high" and mean the same thing the national service
+#: means by it.
 DEFAULT_THRESHOLDS: Dict[str, Tuple[float, float, float]] = {
-    "hazel": (10.0, 30.0, 70.0),
-    "alder": (10.0, 30.0, 70.0),
+    # These two bloom in their hundreds in a late-winter week, which is why
+    # their scale sits so far above the others: DWD only calls hazel or alder
+    # heavy past 100, and a lower edge would leave the map pinned at the top
+    # colour for most of February.
+    "hazel": (10.0, 100.0, 250.0),
+    "alder": (10.0, 100.0, 250.0),
     # Potent, but the counts are in a league of their own: 200 to top out.
     "birch": (10.0, 50.0, 200.0),
     "grasses": (10.0, 30.0, 80.0),
@@ -131,6 +140,13 @@ DEFAULT_THRESHOLDS: Dict[str, Tuple[float, float, float]] = {
     # and its "high" sits below where grass is still only moderate.
     "ragweed": (3.0, 10.0, 25.0),
 }
+
+#: The level at which pollen stops being a number on a map and becomes something
+#: the board says out loud. Index 2 is "high", which is DWD's own threshold for
+#: heavy exposure. Anything lower and the strip would be lit for most of a
+#: northern-German summer, which is the fastest way to teach a shift to stop
+#: reading it.
+WARN_FROM_LEVEL = 2
 
 
 def thresholds(key: str) -> Tuple[float, float, float]:
@@ -381,6 +397,55 @@ def render(
         "min": float(np.nanmin(values)) if np.isfinite(values).any() else None,
         "max": float(np.nanmax(values)) if np.isfinite(values).any() else None,
     }
+
+
+def at_point(
+    lat: float, lon: float, step: int = 0, when: Optional[date] = None
+) -> List[Dict]:
+    """What is in the air over one spot, for every species in season.
+
+    The maps answer "where is it bad"; this answers "is it bad here", which is
+    the only form a warning can take. Nearest grid cell rather than an
+    interpolation: the cells are ~6.5 km across and a pollen forecast is not
+    precise enough for the difference between one and its neighbour to mean
+    anything.
+
+    Heaviest first, so a caller that only shows one shows the one that matters.
+    One species failing does not lose the others -- a missing file for grasses
+    should not hide a ragweed warning.
+    """
+    readings: List[Dict] = []
+    for key in SPECIES:
+        if not in_season(key, when):
+            continue
+        try:
+            forecast = fetch(key)
+            if not 0 <= step < len(forecast.times):
+                continue
+            row = int(np.argmin(np.abs(forecast.lats - lat)))
+            column = int(np.argmin(np.abs(forecast.lons - lon)))
+            value = float(forecast.grid(step)[row, column])
+        except Exception as exc:  # noqa: BLE001 - one species, not the whole block
+            logger.warning("Pollen reading for %s unavailable: %s", key, exc)
+            continue
+        if not math.isfinite(value):
+            continue
+
+        index = min(level_index(key, value), len(LEVELS) - 1)
+        readings.append(
+            {
+                "key": key,
+                "value": round(value, 1),
+                "level": LEVELS[index][0],
+                "level_index": index,
+                "color": LEVELS[index][1],
+                "warn": index >= WARN_FROM_LEVEL,
+                "valid": forecast.times[step].date().isoformat(),
+            }
+        )
+
+    readings.sort(key=lambda r: (-r["level_index"], -r["value"]))
+    return readings
 
 
 def _bands(key: str) -> List[Dict]:

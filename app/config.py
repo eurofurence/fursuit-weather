@@ -21,9 +21,16 @@ DEFAULT_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.json"
 
 @dataclass
 class Event:
-    """The convention edition this instance is running for."""
+    """The convention edition this instance is running for.
 
-    name: str = "Eurofurence 30 - Hamburg CCH"
+    Both names are "EF30" on purpose. The full festival title was three lines of
+    tracked caps on a phone and read as a front door this site is not; everywhere
+    the name appears -- the page, the API title, ``meta.event`` -- the short form
+    is the one that belongs there. ``short_name`` stays a separate field for the
+    next fork, which may well want the long one back.
+    """
+
+    name: str = "EF30"
     short_name: str = "EF30"
 
 
@@ -40,6 +47,7 @@ class Location:
 class DWDSettings:
     #: MOSMIX / POI station. 10147 = Hamburg-Fuhlsbuettel.
     station_id: str = "10147"
+    station_name: str = "Hamburg-Fuhlsbüttel"
     #: DWD "Warncell" ids to watch. 102000000 = Hansestadt Hamburg.
     warncells: List[str] = field(default_factory=lambda: ["102000000"])
     #: WMS layer used for the radar overlay.

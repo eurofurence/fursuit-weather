@@ -122,8 +122,8 @@ def test_plain_proxy_still_falls_back_to_forwarded_for():
 def test_rate_limit_log_line_never_carries_an_address(client, caplog, monkeypatch):
     """The one line in the whole app that used to write a visitor's IP to disk.
 
-    /privacy promises no address is logged; this is the test that keeps that
-    promise true when someone edits the message back to something friendlier.
+    Nothing about a visitor is meant to reach disk; this is the test that keeps
+    that true when someone edits the message back to something friendlier.
     """
     monkeypatch.setattr(main.limiter, "limit", 1)
     main.limiter.reset()
@@ -138,11 +138,12 @@ def test_rate_limit_log_line_never_carries_an_address(client, caplog, monkeypatc
     assert "203.0.113.7" not in caplog.text
 
 
-def test_both_privacy_pages_are_served(client):
-    for path, marker in (("/privacy", "no cookies"), ("/datenschutz", "keine Cookies")):
-        page = client.get(path)
-        assert page.status_code == 200
-        assert marker in page.text
+def test_both_privacy_paths_lead_to_the_eurofurence_notice(client):
+    """The pages are gone, the paths are not: they are in links and bookmarks."""
+    for path in ("/privacy", "/datenschutz"):
+        page = client.get(path, follow_redirects=False)
+        assert page.status_code == 307
+        assert page.headers["location"] == main.PRIVACY_URL
 
 
 def test_api_responses_carry_the_load_headers(client):

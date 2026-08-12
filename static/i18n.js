@@ -131,12 +131,9 @@ window.EFW_I18N = (function () {
       'footer.source': 'github',
       'footer.units': 'Units',
       'footer.clock': 'Time',
+      'footer.wind': 'Wind',
       'footer.privacy': 'Privacy',
       'footer.feedback': 'Feedback',
-      'notice.text':
-        'No advertising, no analytics, no tracking cookies.',
-      'notice.ok': 'Got it', 
-      'notice.details': 'What is stored',
       'lang.label': 'Language',
       'display.allClear': 'No active warnings',
       'display.warnings': 'Active DWD warnings',
@@ -270,12 +267,9 @@ window.EFW_I18N = (function () {
       'footer.source': 'github',
       'footer.units': 'Einheiten',
       'footer.clock': 'Uhrzeit',
+      'footer.wind': 'Wind',
       'footer.privacy': 'Datenschutz',
       'footer.feedback': 'Feedback',
-      'notice.text':
-        'Keine Werbung, keine Analyse, keine Tracking-Cookies.',
-      'notice.ok': 'Verstanden',
-      'notice.details': 'Was gespeichert wird',
       'lang.label': 'Sprache',
       'display.allClear': 'Keine aktiven Warnungen',
       'display.warnings': 'Aktive DWD-Warnungen',
@@ -286,10 +280,21 @@ window.EFW_I18N = (function () {
   const LANG_KEY = 'efw.lang';
   const UNIT_KEY = 'efw.unit';
   const CLOCK_KEY = 'efw.clock';
+  const WIND_KEY = 'efw.wind';
   const ALLERGY_KEY = 'efw.allergy';
-  const NOTICE_KEY = 'efw.noticeSeen';
 
   const ALLERGIES = ['hazel', 'alder', 'birch', 'grasses', 'ragweed'];
+
+  /* Wind arrives in km/h and stays that way in the payload; this is only how it
+     is written down. mph for the Americans, knots because a fair number of
+     people read wind that way and neither of the other two means anything to
+     them. The label is the unit's own name in both languages -- "km/h" is not
+     translated anywhere it is spoken. */
+  const WIND_UNITS = {
+    kmh: { factor: 1, label: 'km/h' },
+    mph: { factor: 0.621371, label: 'mph' },
+    kn: { factor: 0.539957, label: 'kn' },
+  };
 
   const params = new URLSearchParams(location.search);
 
@@ -322,6 +327,17 @@ window.EFW_I18N = (function () {
     localStorage.setItem(UNIT_KEY, unit === 'F' ? 'F' : 'C');
   }
 
+  function getWind() {
+    const asked = (params.get('wind') || '').toLowerCase();
+    if (WIND_UNITS[asked]) return asked;
+    const stored = localStorage.getItem(WIND_KEY);
+    return WIND_UNITS[stored] ? stored : 'kmh';
+  }
+
+  function setWind(unit) {
+    localStorage.setItem(WIND_KEY, WIND_UNITS[unit] ? unit : 'kmh');
+  }
+
   function getClock() {
     const asked = params.get('clock');
     if (asked === '12' || asked === '24') return asked;
@@ -348,23 +364,6 @@ window.EFW_I18N = (function () {
       params.delete('allergy');
       const query = params.toString();
       history.replaceState(null, '', `${location.pathname}${query ? `?${query}` : ''}`);
-    }
-  }
-
-  function noticeSeen() {
-    try {
-      return localStorage.getItem(NOTICE_KEY) === '1';
-    } catch (error) {
-      // Storage blocked or full: show the notice rather than crash the page.
-      return false;
-    }
-  }
-
-  function setNoticeSeen() {
-    try {
-      localStorage.setItem(NOTICE_KEY, '1');
-    } catch (error) {
-      /* Nothing to do. it will simply appear again next time. */
     }
   }
 
@@ -427,6 +426,21 @@ window.EFW_I18N = (function () {
     return `${value.toFixed(digits)} °${getUnit()}`;
   }
 
+  /** Convert a km/h value for display, honouring the wind unit preference.
+   *
+   * Whole numbers throughout: the forecast does not know the wind to a tenth of
+   * a mile an hour, and writing it that way would claim it did.
+   */
+  function wind(kmh, { unit = true } = {}) {
+    if (kmh === null || kmh === undefined) return '-';
+    const chosen = WIND_UNITS[getWind()] || WIND_UNITS.kmh;
+    const value = Math.round(kmh * chosen.factor);
+    return unit ? `${value} ${chosen.label}` : `${value}`;
+  }
+
+  /** The unit's own name, for a row that writes several numbers before it. */
+  const windUnit = () => (WIND_UNITS[getWind()] || WIND_UNITS.kmh).label;
+
   /** Same, but without a space. for compact places like the day rows. */
   function tempShort(celsius) {
     if (celsius === null || celsius === undefined) return '-';
@@ -454,12 +468,14 @@ window.EFW_I18N = (function () {
     setUnit,
     getClock,
     setClock,
+    getWind,
+    setWind,
     getAllergy,
     setAllergy,
     ALLERGIES,
-    noticeSeen,
-    setNoticeSeen,
     temp,
+    wind,
+    windUnit,
     tempShort,
     time,
     dateOnly,

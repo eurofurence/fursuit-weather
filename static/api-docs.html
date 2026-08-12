@@ -39,7 +39,7 @@
       it on yours. Everything is a plain <code>GET</code> that returns JSON. Want
       German text? Add <code>?lang=de</code> to any endpoint.
     </p>
-    <pre><code>curl https://<span class="host">efweather.laffiesphere.com</span>/api/v1/fsi</code></pre>
+    <pre><code>curl https://<span class="host">weather.eurofurence.org</span>/api/v1/fsi</code></pre>
     <pre><code>{
   "score": 8.5,
   "band": "Excellent",
@@ -59,13 +59,10 @@
     <h3>Two rules</h3>
     <ul class="docs-list">
       <li>
-        <strong>Build against <code>/api/v1</code>.</strong> Those shapes are a
-        contract. They will not change under you.
+        <strong>Build against <code>/api/v1</code>.</strong>: it will likely stay stable, and it is the only part of the site that is published.
       </li>
       <li>
-        <strong>Do not build against <code>/api/summary</code>.</strong> It feeds
-        this site's own frontend, it is big, and its shape changes whenever the
-        page needs something new.
+        <strong>Use responsefully</strong>: Server no likey big useages. Pwease be kind to the sewvew. uwu
       </li>
     </ul>
   </section>
@@ -121,31 +118,6 @@
         </tbody>
       </table>
     </div>
-
-    <h3>Images</h3>
-    <p>
-      Three PNG endpoints back the maps. They are overlays for a slippy map, not
-      part of the versioned JSON contract:
-    </p>
-    <pre><code>/api/radar.png                          DWD rain radar composite
-/api/model.png?param=clouds&amp;step=0      ICON-D2 field, param=clouds|temperature|wind, step=0…48 (hours)
-/api/pollen.png?species=birch&amp;step=0    ICON-ART pollen, species=hazel|alder|birch|grasses|ragweed, step=0…5 (days)</code></pre>
-    <p>
-      All take <code>span</code> and <code>width</code> as well. To place any of
-      them on a map you also need the area it covers, which comes from
-      <code>/api/model</code> and from the <code>radar</code> block of
-      <code>/api/summary</code>. The pollen grid covers Germany only, so it has
-      its own <code>bbox</code> inside the <code>pollen</code> block — do not
-      hang it on the ICON one.
-    </p>
-    <p>
-      Pollen is published <strong>only during each species' season</strong>, so a
-      request for one outside it answers <code>404</code> rather than an empty
-      map. The seasons, and the concentration bands the image is painted in, are
-      in the <code>pollen</code> block of <code>/api/model</code>. Values are
-      daily mean grains/m³; the bands are this site's reading of them, and DWD
-      notes the forecast is not suitable for clinical use.
-    </p>
 
     <h3>Every response carries <code>meta</code></h3>
     <p>So you can always tell where the numbers came from:</p>
@@ -250,12 +222,10 @@ X-RateLimit-Remaining: 97</code></pre>
           <tr><td>Station observations</td><td>hourly</td><td>10 min</td></tr>
           <tr><td>MOSMIX point forecast</td><td>every ~6 h</td><td>30 min</td></tr>
           <tr><td>Warnings</td><td>every few minutes</td><td>3 min</td></tr>
-          <tr><td>Rain radar</td><td>every 5 min</td><td>4 min</td></tr>
-          <tr><td>ICON-D2 model run</td><td>every 3 h</td><td>until the next run</td></tr>
         </tbody>
       </table>
     </div>
-    <p>Once a minute is plenty. This site's own frontend refreshes every five.</p>
+    <p>Once a minute is plenty. This site's own frontend refreshes every five minutes.</p>
   </section>
 
   <section class="card" id="errors">
@@ -264,9 +234,8 @@ X-RateLimit-Remaining: 97</code></pre>
       <table class="docs-table">
         <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
         <tbody>
-          <tr><td><code>422</code></td><td>A parameter failed validation, e.g. <code>lang=fr</code>, or <code>hours</code> outside 1…120</td></tr>
+          <tr><td><code>422</code></td><td>A parameter failed validation, e.g. <code>lang=fr</code>, <code>wind_unit=mps</code>, or <code>hours</code> outside 1…120</td></tr>
           <tr><td><code>429</code></td><td>Rate limited. The body has <code>retry_after_seconds</code></td></tr>
-          <tr><td><code>502</code></td><td>An image upstream (radar, ICON) was unavailable</td></tr>
           <tr><td><code>503</code></td><td>No usable DWD data at all right now</td></tr>
         </tbody>
       </table>
@@ -317,5 +286,19 @@ X-RateLimit-Remaining: 97</code></pre>
     <a href="https://github.com/laffiie/EurofurenceWeather" rel="noopener">source</a>.
   </p>
 </footer>
+
+<!-- The samples are written for the convention's hostname, because that is the
+     one most readers arrive on. Anyone reading this page on the other name gets
+     the commands rewritten to it, so a copied line works where they are rather
+     than sending them across to the other door of the same building. -->
+<script>
+  (function () {
+    var here = location.host;
+    if (!here || location.protocol === 'file:') return;
+    for (var i = 0, hosts = document.querySelectorAll('.host'); i < hosts.length; i++) {
+      hosts[i].textContent = here;
+    }
+  })();
+</script>
 </body>
 </html>

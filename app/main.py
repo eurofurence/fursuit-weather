@@ -14,7 +14,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import api_v1, presence, ratelimit, schemas, service
@@ -34,10 +34,13 @@ app = FastAPI(
     title=f"{settings.event.name} — Weather API",
     version="2.1.0",
     description=(
-        "Fursuiting index, weather overview, rain radar and ICON model maps for "
+        "Fursuiting index, weather overview and warnings for "
         f"{settings.location.name}, built on DWD OpenData.\n\n"
-        "**Build against `/api/v1`.** Those shapes are a stable contract. "
-        "`/api/summary` serves this project's own frontend and changes without notice.\n\n"
+        "**Everything published here is JSON under `/api/v1`, and those shapes are "
+        "a stable contract.** The map imagery this site draws for itself is not part "
+        "of it: pictures are expensive to serve and trivial to abuse, so they are "
+        "not offered as an API. Radar and warning layers come from the DWD GeoServer "
+        "at `maps.dwd.de`, which serves them to anyone.\n\n"
         "Open access, no key. Please respect the rate limit in the `X-RateLimit-*` "
         "headers and cache responses — the upstream data only changes hourly.\n\n"
         "Weather data © Deutscher Wetterdienst (DWD), used under GeoNutzV. "
@@ -87,16 +90,16 @@ app.add_middleware(
 )
 
 
-@app.get(
-    "/api/summary",
-    summary="Internal aggregate for this project's own frontend",
-    description="Not a stable contract -- its shape follows whatever the site needs. "
-    "External consumers should use /api/v1 instead.",
-    tags=["Internal"],
-)
+@app.get("/api/summary", include_in_schema=False)
 def get_summary(
     lang: str = Query("en", pattern="^(en|de)$", description="Language for generated text"),
 ) -> JSONResponse:
+    """This project's own aggregate. Deliberately absent from the schema.
+
+    Its shape follows whatever the page needs and changes without notice, so
+    publishing it only invites someone to build on it and be broken later.
+    /api/v1 is the contract; this is plumbing that happens to be reachable.
+    """
     payload = service.build_summary(lang)
     if payload["current"] is None and not payload["daily"]:
         raise HTTPException(status_code=503, detail="No DWD data available right now")
@@ -104,35 +107,27 @@ def get_summary(
     return JSONResponse(payload, headers={"Cache-Control": "public, max-age=120"})
 
 
-@app.get("/api/radar.png", summary="Rain radar composite as a PNG overlay", tags=["Images"])
-def get_radar(
-    span: float = Query(1.6, ge=0.2, le=6.0, description="Half-height of the map in degrees"),
-    width: int = Query(900, ge=100, le=2000),
-    height: int = Query(900, ge=100, le=2000),
-    layer: str = Query("radar", pattern="^(radar|warnings)$"),
-) -> Response:
-    bbox = radar.bbox_around(
-        settings.location.latitude, settings.location.longitude, span
-    )
-    wms_layer = (
-        settings.dwd.radar_layer if layer == "radar" else settings.dwd.warnings_layer
-    )
-    try:
-        image = radar.fetch_layer_image(wms_layer, bbox, width, height)
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Radar fetch failed: %s", exc)
-        raise HTTPException(status_code=502, detail="DWD radar service unavailable") from exc
-
-    return Response(
-        content=image,
-        media_type="image/png",
-        headers={"Cache-Control": f"public, max-age={radar.RADAR_TTL}"},
-    )
-
+# ----------------------------------------------------------------- imagery
+#
+# The endpoints below draw pictures, and pictures are not an API. Every
+# one of them costs an upstream fetch and a render, and answers in kilobytes
+# where the JSON answers in bytes -- which makes a published image endpoint an
+# amplifier: a few cheap requests turn into a lot of expensive work on one
+# machine on a home uplink. So none of them is in the schema or the docs. They
+# exist for this site's own map card, at the one size that card asks for.
+#
+# The radar proxy that used to sit here is gone: the map talks to the DWD
+# GeoServer directly, so it had no caller left, and DWD's WMS is public and far
+# better placed to serve it than we are.
 
 #: The model card's map is far wider than it is tall, so the field is cut to a
 #: matching shape -- otherwise it fits the height and leaves empty side margins.
 MODEL_ASPECT = 2.3
+
+#: Widest render anyone may ask for. The card requests 720, and every pixel
+#: above that is work nobody asked for: area, and so cost, grows with the
+#: square. A ceiling near what is actually used takes the amplification out.
+MAX_IMAGE_WIDTH = 900
 
 
 def _model_bbox(span: float) -> tuple:
@@ -141,8 +136,9 @@ def _model_bbox(span: float) -> tuple:
     )
 
 
-@app.get("/api/model", summary="Available ICON model fields and the current run", tags=["Images"])
+@app.get("/api/model", include_in_schema=False)
 def get_model_info(span: float = Query(1.6, ge=0.2, le=4.0)) -> JSONResponse:
+    """Which ICON fields exist and which run they are from. Feeds the map card."""
     bbox = _model_bbox(span)
     payload = icon.describe_parameters(bbox)
 
@@ -158,13 +154,14 @@ def get_model_info(span: float = Query(1.6, ge=0.2, le=4.0)) -> JSONResponse:
     return JSONResponse(payload, headers={"Cache-Control": "public, max-age=600"})
 
 
-@app.get("/api/model.png", summary="An ICON-D2 field rendered as a map overlay", tags=["Images"])
+@app.get("/api/model.png", include_in_schema=False)
 def get_model_image(
     param: str = Query("clouds", pattern="^(clouds|temperature|wind)$"),
     step: int = Query(0, ge=0, le=icon.MAX_STEP, description="Forecast hour from the model run"),
     span: float = Query(1.6, ge=0.2, le=4.0),
-    width: int = Query(720, ge=100, le=1600),
+    width: int = Query(720, ge=100, le=MAX_IMAGE_WIDTH),
 ) -> Response:
+    """One ICON-D2 field as a map overlay, for this site's model card."""
     try:
         result = icon.render(param, step, _model_bbox(span), width)
     except Exception as exc:  # noqa: BLE001
@@ -183,20 +180,18 @@ def get_model_image(
     )
 
 
-@app.get(
-    "/api/pollen.png",
-    summary="An ICON-ART pollen field rendered as a map overlay",
-    description="Daily mean concentration for one species. A species outside its "
-    "own season answers 404: DWD publishes nothing for it, which is an answer "
-    "rather than a fault.",
-    tags=["Images"],
-)
+@app.get("/api/pollen.png", include_in_schema=False)
 def get_pollen_image(
     species: str = Query("grasses", pattern="^(hazel|alder|birch|grasses|ragweed)$"),
     step: int = Query(0, ge=0, le=pollen.MAX_STEP, description="Forecast day from the run"),
     span: float = Query(1.6, ge=0.2, le=4.0),
-    width: int = Query(720, ge=100, le=1600),
+    width: int = Query(720, ge=100, le=MAX_IMAGE_WIDTH),
 ) -> Response:
+    """One ICON-ART pollen field as a map overlay.
+
+    A species outside its own season answers 404: DWD publishes nothing for it,
+    which is an answer rather than a fault.
+    """
     if not settings.pollen.enabled:
         raise HTTPException(status_code=404, detail="Pollen layer is switched off")
     try:
@@ -228,7 +223,7 @@ def get_pollen_image(
     summary="How busy the site is right now",
     description="A load signal, not an audience metric: visitors are counted per client "
     "address inside a short window, so one shared network counts once and a crawler "
-    "counts as a person. Nothing about a visitor is stored -- see /privacy.",
+    "counts as a person. Nothing about a visitor is stored.",
     tags=["Public API v1"],
 )
 def site_load() -> JSONResponse:
@@ -294,16 +289,18 @@ def display() -> FileResponse:
     return FileResponse(STATIC_DIR / "display.html", headers={"Cache-Control": REVALIDATE})
 
 
+PRIVACY_URL = "https://help.eurofurence.org/legal/privacy"
+
+
 @app.get("/privacy", include_in_schema=False)
-def privacy() -> FileResponse:
-    """What the site stores and what it does not. Linked from the storage notice."""
-    return FileResponse(STATIC_DIR / "privacy.html", headers={"Cache-Control": REVALIDATE})
-
-
 @app.get("/datenschutz", include_in_schema=False)
-def datenschutz() -> FileResponse:
-    """The same page in German -- a privacy notice its readers cannot read is no notice."""
-    return FileResponse(STATIC_DIR / "datenschutz.html", headers={"Cache-Control": REVALIDATE})
+def privacy() -> RedirectResponse:
+    """Both old paths still resolve: they are in links, bookmarks and QR codes.
+
+    307 rather than 301: a permanent redirect is cached by browsers effectively
+    forever, and the destination is not ours to be that certain about.
+    """
+    return RedirectResponse(PRIVACY_URL, status_code=307)
 
 
 @app.get("/api-docs", include_in_schema=False)

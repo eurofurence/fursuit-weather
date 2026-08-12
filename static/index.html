@@ -14,20 +14,22 @@
 <div class="progress" id="progress" role="progressbar" aria-label="Loading" hidden><span class="fill"></span></div>
 
 <header class="site-header">
-  <!-- Short name and place on one line with the switches, the heading on its
-       own line under them. The full festival name ran to three lines of tracked
-       caps on a phone before any weather was on screen, and the place sat below
-       the heading behind a separator that became a dangling "·" the moment it
-       wrapped. The long name is not on the page any more: this is the weather
-       companion to the convention rather than its front door, and the meta
-       description above still carries it for anything that indexes us.
+  <!-- Eyebrow and heading in a column on the left, the switches pinned to the
+       top right of the page beside them. The full festival name ran to three
+       lines of tracked caps on a phone before any weather was on screen, and
+       the place sat below the heading behind a separator that became a dangling
+       "·" the moment it wrapped. The long name is not on the page any more:
+       this is the weather companion to the convention rather than its front
+       door, and the meta description above still carries it for anything that
+       indexes us.
 
-       The eyebrow is a sibling of the switches rather than part of the heading
-       so the two can share a line -- which leaves the heading the full width,
-       and it needs it: nested inside, "Weather companion" broke across two
-       lines on a phone with the switch stranded in the gap beside it. -->
-  <p class="event"><span id="event-name">EF30</span><span class="where" id="where"></span></p>
-  <h1 class="title" data-i18n="app.heading">Weather companion</h1>
+       The heading is free to wrap inside its own column -- when the switches
+       take what they need, what is left is the heading's, over as many lines as
+       that takes, rather than the two fighting over one line. -->
+  <div class="head-titles">
+    <p class="event"><span id="event-name">EF30</span><span class="where" id="where"></span></p>
+    <h1 class="title" data-i18n="app.heading">Weather companion</h1>
+  </div>
 
   <div class="head-controls">
     <div class="lang-switch" role="group" id="lang-switch" aria-label="Language">
@@ -115,9 +117,12 @@
     </details>
   </section>
 
-  <!-- Current conditions -->
+  <!-- Current conditions. The heading names the station these numbers were
+       measured at and when the reading was taken: they come from one weather
+       station a few kilometres out of town, not from the doorstep of the CCH,
+       and a reader comparing them with the sky outside deserves to know that. -->
   <section class="card" aria-labelledby="now-heading">
-    <h2 id="now-heading" data-i18n="now.heading">Right now in Hamburg</h2>
+    <h2 id="now-heading"><span data-i18n="now.heading">Right now</span> <span class="at" id="now-source"></span></h2>
     <div class="now" id="now"></div>
   </section>
 
@@ -167,18 +172,37 @@
 <!-- Display settings, not small print: they change what the page shows, so they
      sit with the page rather than buried among the credits. -->
 <section class="settings" aria-label="Display settings">
+  <!-- Each label travels with the buttons it names, in a pair of its own: three
+       settings do not fit one phone line, and a bare "Wind:" left at the end of
+       a line with its buttons on the next is a label for nothing.
+
+       The colons are drawn by CSS: as text nodes they became flex items of
+       their own and sat a whole gap away from the word they belong to. -->
   <p class="unit-switch">
-    <!-- The colons are drawn by CSS: as text nodes they became flex items of
-         their own and sat a whole gap away from the word they belong to. -->
-    <span class="k" data-i18n="footer.units">Units</span>
-    <span role="group" id="unit-switch" aria-label="Temperature unit">
-      <button type="button" data-unit="C">°C</button>
-      <button type="button" data-unit="F">°F</button>
+    <span class="pair">
+      <span class="k" data-i18n="footer.units">Units</span>
+      <span role="group" id="unit-switch" aria-label="Temperature unit">
+        <button type="button" data-unit="C">°C</button>
+        <button type="button" data-unit="F">°F</button>
+      </span>
     </span>
-    <span class="k" data-i18n="footer.clock">Time</span>
-    <span role="group" id="clock-switch" aria-label="Clock format">
-      <button type="button" data-clock="24">24 h</button>
-      <button type="button" data-clock="12">12 h</button>
+    <span class="pair">
+      <span class="k" data-i18n="footer.clock">Time</span>
+      <span role="group" id="clock-switch" aria-label="Clock format">
+        <button type="button" data-clock="24">24 h</button>
+        <button type="button" data-clock="12">12 h</button>
+      </span>
+    </span>
+    <!-- Three units, because the two obvious ones leave out everybody who reads
+         wind in knots. The names are not translated: they are the same in both
+         languages. -->
+    <span class="pair">
+      <span class="k" data-i18n="footer.wind">Wind</span>
+      <span role="group" id="wind-switch" aria-label="Wind speed unit">
+        <button type="button" data-wind="kmh">km/h</button>
+        <button type="button" data-wind="mph">mph</button>
+        <button type="button" data-wind="kn">kn</button>
+      </span>
     </span>
   </p>
 </section>
@@ -192,9 +216,11 @@
     <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a>, © CARTO.
     · <a href="/display" data-i18n="footer.display">ConOps display</a>
     · <a href="/api-docs" data-i18n="footer.api">Weather API</a>
-    <!-- href is set in JS: the page exists in both languages. Alongside the
-         other links, not alone on a line of its own below them. -->
-    · <a href="/privacy" class="privacy-link" data-i18n="footer.privacy">Privacy</a>
+    <!-- The site runs on Eurofurence e.V. infrastructure, so their notice is the
+         one that governs it: link it rather than keeping a second, drifting copy
+         of the same statement here. It is bilingual on their side, so there is
+         nothing for the language switch to do. -->
+    · <a href="https://help.eurofurence.org/legal/privacy" rel="noopener" data-i18n="footer.privacy">Privacy</a>
     · <a href="https://forms.gle/LMTQHvd5frtd7QJH6" target="_blank" rel="noopener noreferrer" data-i18n="footer.feedback">Feedback</a>
   </p>
   <!-- The disclaimer carries a link, so it cannot be one data-i18n string:
@@ -208,18 +234,55 @@
     <span data-i18n="footer.builtBy">Built by</span> <strong>Laffie @laffiesphere</strong> ·
     <a href="https://github.com/laffiie/EurofurenceWeather" rel="noopener" data-i18n="footer.source">source</a>
   </p>
+  <!-- Filled in by the tip-jar block at the end of the body, on the author's own
+       host only. Empty and invisible everywhere else. A div rather than a p: the
+       widget hands back markup of its own choosing, and a block element landing
+       inside a paragraph is how you get a footer torn in half. -->
+  <div class="tipjar" id="tipjar"></div>
 </footer>
 
-<!-- Storage notice. Not a consent gate: the site sets no cookies and stores
-     only the settings the visitor chose, so there is nothing to ask permission
-     for -- but people deserve to be told, and to be able to read the detail. -->
-<aside class="storage-notice" id="storage-notice" hidden>
-  <p data-i18n="notice.text"></p>
-  <p class="actions">
-    <a href="/privacy" class="privacy-link" data-i18n="notice.details">What is stored</a>
-    <button type="button" id="notice-ok" data-i18n="notice.ok">Got it</button>
-  </p>
-</aside>
+<!-- No storage notice: the site sets no cookies and stores only the settings the
+     visitor chose, so there was never anything to ask permission for, and the
+     privacy link in the footer says the rest without standing in the way. -->
+
+<!-- Tip jar, on the author's own host and nowhere else.
+
+     The convention's copy at weather.eurofurence.org must not ask its visitors
+     for money on Eurofurence's behalf, and it is the one place a third-party
+     script has no business loading: everything else this page fetches is DWD,
+     the basemap, or us. So the hostname is checked before the script is even
+     requested, not after -- a blocked widget still costs a DNS lookup and tells
+     Ko-fi someone was here.
+
+     The widget draws itself with document.write, which would blank the page
+     this late in the load, so its output is caught and put in the footer slot
+     instead. Anything unexpected leaves the page exactly as it was. -->
+<script>
+  (function () {
+    if (location.hostname !== 'efweather.laffiesphere.com') return;
+    var slot = document.getElementById('tipjar');
+    if (!slot) return;
+
+    var script = document.createElement('script');
+    script.src = 'https://storage.ko-fi.com/cdn/widget/Widget_2.js';
+    script.onload = function () {
+      if (typeof kofiwidget2 === 'undefined') return;
+      var write = document.write;
+      try {
+        document.write = function (html) {
+          slot.innerHTML = html;
+        };
+        kofiwidget2.init('Support me on Ko-fi', '#6895e3', 'B0B6BCXY7');
+        kofiwidget2.draw();
+      } catch (error) {
+        console.warn('EFW: tip jar unavailable', error);
+      } finally {
+        document.write = write;
+      }
+    };
+    document.head.appendChild(script);
+  })();
+</script>
 
 <script src="/vendor/leaflet.js"></script>
 <script src="/i18n.js"></script>

@@ -14,9 +14,10 @@ from fastapi.testclient import TestClient
 
 from app import i18n as app_i18n
 from app import main
-from app.dwd import mosmix, observations
+from app.dwd import mosmix, observations, pollen
 from app.dwd import warnings as dwd_warnings
 from app.dwd.client import cache
+from app.api_v1 import WIND_FACTORS
 from app.main import app
 from app.models import WeatherPoint, Warning
 
@@ -32,9 +33,12 @@ ENDPOINTS = (
 
 
 @pytest.fixture(autouse=True)
-def clean_state():
+def clean_state(monkeypatch):
     cache.clear()
     main.limiter.reset()
+    # The summary behind every v1 endpoint reads pollen, which is a file per
+    # species in season. Not from here it is not: the suite stays offline.
+    monkeypatch.setattr(pollen, "at_point", lambda *a, **k: [])
     yield
     cache.clear()
     main.limiter.reset()
@@ -303,6 +307,41 @@ def test_openapi_documents_the_public_surface(client):
     assert "api/v1" in schema["info"]["description"]
 
 
-def test_summary_is_marked_internal(client):
+def test_the_schema_publishes_nothing_but_the_contract(client):
+    """What is documented is what someone may build on.
+
+    The aggregate the frontend reads and the images the map card draws are still
+    reachable -- the site needs them -- but they are nobody's contract, and a
+    path in the schema is an invitation to depend on it.
+    """
     schema = client.get("/openapi.json").json()
-    assert schema["paths"]["/api/summary"]["get"]["tags"] == ["Internal"]
+    for path in ("/api/summary", "/api/model", "/api/model.png", "/api/pollen.png"):
+        assert path not in schema["paths"], f"{path} should not be published"
+    assert client.get("/api/summary").status_code == 200
+
+
+def test_wind_can_be_asked_for_in_mph_or_knots(client):
+    for unit, speed, gust in (("mph", "wind_speed_mph", "wind_gust_mph"),
+                              ("kn", "wind_speed_kn", "wind_gust_kn")):
+        body = client.get(f"/api/v1/current?wind_unit={unit}").json()
+        assert body["wind_speed_kmh"] is not None, "km/h stays whatever else is asked for"
+        assert body[speed] == pytest.approx(body["wind_speed_kmh"] * WIND_FACTORS[unit], abs=0.1)
+        assert body[gust] is not None
+
+
+def test_the_unit_nobody_asked_for_is_absent_not_empty(client):
+    """A 120-hour forecast is no place for four empty fields per hour."""
+    plain = client.get("/api/v1/forecast?hours=3").json()
+    for hour in plain["hours"]:
+        assert "wind_speed_mph" not in hour
+        assert "wind_speed_kn" not in hour
+        assert "wind_speed_kmh" in hour
+
+    mph = client.get("/api/v1/forecast?hours=3&wind_unit=mph").json()
+    for hour in mph["hours"]:
+        assert "wind_speed_mph" in hour
+        assert "wind_speed_kn" not in hour
+
+
+def test_an_unknown_wind_unit_is_rejected(client):
+    assert client.get("/api/v1/current?wind_unit=mps").status_code == 422

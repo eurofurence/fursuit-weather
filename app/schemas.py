@@ -14,10 +14,19 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
+#: Wind is measured in km/h and ``wind_speed_kmh`` is always present and always
+#: km/h -- that is the contract and it does not move. ``?wind_unit=mph`` or
+#: ``kn`` adds a second pair beside it, converted. The pair nobody asked for is
+#: left out of the response entirely rather than sent as nulls: a forecast is a
+#: hundred hours long, and empty keys on every one of them are pure freight.
+MPH = "Only present with ?wind_unit=mph"
+KNOTS = "Only present with ?wind_unit=kn"
+
+
 class Meta(BaseModel):
     """Who and where the numbers describe, plus provenance."""
 
-    event: str = Field(examples=["Eurofurence 30: Fantastic Furry Festival"])
+    event: str = Field(examples=["EF30"])
     location: str = Field(examples=["Hamburg"])
     latitude: float
     longitude: float
@@ -88,6 +97,10 @@ class CurrentConditions(BaseModel):
     humidity_percent: Optional[float] = None
     wind_speed_kmh: Optional[float] = None
     wind_gust_kmh: Optional[float] = None
+    wind_speed_mph: Optional[float] = Field(default=None, description=MPH)
+    wind_gust_mph: Optional[float] = Field(default=None, description=MPH)
+    wind_speed_kn: Optional[float] = Field(default=None, description=KNOTS)
+    wind_gust_kn: Optional[float] = Field(default=None, description=KNOTS)
     wind_direction_deg: Optional[float] = None
     wind_direction: Optional[str] = Field(default=None, examples=["NW"])
     beaufort: Optional[int] = None
@@ -108,6 +121,10 @@ class ForecastHour(BaseModel):
     humidity_percent: Optional[float] = None
     wind_speed_kmh: Optional[float] = None
     wind_gust_kmh: Optional[float] = None
+    wind_speed_mph: Optional[float] = Field(default=None, description=MPH)
+    wind_gust_mph: Optional[float] = Field(default=None, description=MPH)
+    wind_speed_kn: Optional[float] = Field(default=None, description=KNOTS)
+    wind_gust_kn: Optional[float] = Field(default=None, description=KNOTS)
     precipitation_mm: Optional[float] = None
     precipitation_probability: Optional[float] = None
     weather: Weather
@@ -139,6 +156,10 @@ class DailyEntry(BaseModel):
     precipitation_probability: Optional[float] = None
     wind_speed_kmh: Optional[float] = None
     wind_gust_kmh: Optional[float] = None
+    wind_speed_mph: Optional[float] = Field(default=None, description=MPH)
+    wind_gust_mph: Optional[float] = Field(default=None, description=MPH)
+    wind_speed_kn: Optional[float] = Field(default=None, description=KNOTS)
+    wind_gust_kn: Optional[float] = Field(default=None, description=KNOTS)
     wind_direction_deg: Optional[float] = Field(
         default=None, description="Speed-weighted vector mean over the day"
     )

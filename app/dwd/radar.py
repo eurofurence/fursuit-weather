@@ -1,19 +1,19 @@
-"""Rain radar imagery from the official DWD GeoServer (maps.dwd.de).
+"""Where the rain radar is, and how big a piece of map to ask for.
 
-The GeoServer exposes the national radar composite as a WMS layer. Rather than
-have the browser talk to DWD directly (which breaks behind restrictive
-networks and gives us no caching), the backend proxies a single GetMap request
-and serves the PNG.
+The DWD GeoServer exposes the national radar composite as a WMS layer, and the
+browser talks to it directly: it is a public service, it serves tiles far better
+than one machine on a home uplink can, and proxying it here only put our own
+bandwidth between the reader and a picture DWD was already happy to hand over.
+So nothing in this module fetches an image any more -- it names the layer and
+works out the box, and Leaflet does the rest.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional, Tuple
-from urllib.parse import urlencode
+from typing import Dict, Tuple
 
 from app.config import settings
-from app.dwd.client import cache, get_session
 
 logger = logging.getLogger(__name__)
 
@@ -21,51 +21,6 @@ WMS_URL = "https://maps.dwd.de/geoserver/dwd/wms"
 
 #: Radar imagery updates every 5 minutes; do not hammer DWD harder than that.
 RADAR_TTL = 240
-
-
-def build_getmap_url(
-    layer: str,
-    bbox: Tuple[float, float, float, float],
-    width: int,
-    height: int,
-) -> str:
-    """WMS 1.3.0 GetMap. Note EPSG:4326 takes bbox as min_lat,min_lon,max_lat,max_lon."""
-    params = {
-        "service": "WMS",
-        "version": "1.3.0",
-        "request": "GetMap",
-        "layers": layer,
-        "styles": "",
-        "crs": "EPSG:4326",
-        "bbox": ",".join(str(v) for v in bbox),
-        "width": str(width),
-        "height": str(height),
-        "format": "image/png",
-        "transparent": "true",
-    }
-    return f"{WMS_URL}?{urlencode(params)}"
-
-
-def fetch_layer_image(
-    layer: str,
-    bbox: Tuple[float, float, float, float],
-    width: int = 900,
-    height: int = 900,
-) -> bytes:
-    """Fetch one WMS layer as PNG bytes, cached for RADAR_TTL seconds."""
-    key = f"wms:{layer}:{bbox}:{width}x{height}"
-
-    def _fetch() -> bytes:
-        url = build_getmap_url(layer, bbox, width, height)
-        response = get_session().get(url, timeout=settings.request_timeout)
-        response.raise_for_status()
-        content_type = response.headers.get("Content-Type", "")
-        if "image" not in content_type:
-            # GeoServer reports errors as XML with a 200 status.
-            raise ValueError(f"WMS returned {content_type}: {response.text[:200]}")
-        return response.content
-
-    return cache.get_or_fetch(key, RADAR_TTL, _fetch)
 
 
 def bbox_around(
@@ -88,13 +43,16 @@ def bbox_around(
 
 
 def radar_info(span_deg: float = 1.6) -> Dict:
-    """Metadata the frontend needs to place the radar image."""
+    """What the frontend needs to put the radar on its map.
+
+    No `age_seconds` any more: it read the age of our own cached copy of the
+    image, and there is no copy to be old now that the browser fetches straight
+    from DWD. A number that could only ever be null is worse than no number.
+    """
     bbox = bbox_around(settings.location.latitude, settings.location.longitude, span_deg)
-    age = cache.age(f"wms:{settings.dwd.radar_layer}:{bbox}:900x900")
     return {
         "layer": settings.dwd.radar_layer,
         "bbox": {"min_lat": bbox[0], "min_lon": bbox[1], "max_lat": bbox[2], "max_lon": bbox[3]},
         "attribution": "Deutscher Wetterdienst (DWD)",
         "refresh_seconds": RADAR_TTL,
-        "age_seconds": None if age is None else int(age),
     }

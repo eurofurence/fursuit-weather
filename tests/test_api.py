@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import service
-from app.dwd import icon, mosmix, observations
+from app.dwd import icon, mosmix, observations, pollen
 from app.dwd import warnings as dwd_warnings
 from app.dwd.client import cache
 from app.main import app
@@ -17,10 +17,31 @@ from app.models import WeatherPoint, Warning
 
 
 @pytest.fixture(autouse=True)
-def clear_cache():
+def clear_cache(monkeypatch):
     cache.clear()
+    # Every summary now reads the pollen over the venue, which means a NetCDF
+    # file per species in season. No test may go and get one: the blanket stub
+    # is here rather than in each fixture so a test added later cannot quietly
+    # put the suite back on the network. Fixtures that want a reading set their
+    # own on top of this.
+    monkeypatch.setattr(pollen, "at_point", lambda *a, **k: [])
     yield
     cache.clear()
+
+
+#: A real pollen reading means downloading a NetCDF file per species in season,
+#: so every fixture below stubs it: the suite is offline. Moderate rather than
+#: high, so the default board has nothing to shout about and a test that wants a
+#: warning has to ask for one.
+GRASSES_MODERATE = {
+    "key": "grasses",
+    "value": 12.0,
+    "level": "moderate",
+    "level_index": 1,
+    "color": "#ffd633",
+    "warn": False,
+    "valid": "2026-08-12",
+}
 
 
 def _series(hours: int = 30) -> list[WeatherPoint]:
@@ -62,6 +83,7 @@ def stub_dwd(monkeypatch):
         },
     )
     monkeypatch.setattr(dwd_warnings, "fetch_warnings", lambda *a, **k: [])
+    monkeypatch.setattr(pollen, "at_point", lambda *a, **k: [dict(GRASSES_MODERATE)])
     return points
 
 
@@ -96,6 +118,7 @@ def elapsed_client(monkeypatch):
         },
     )
     monkeypatch.setattr(dwd_warnings, "fetch_warnings", lambda *a, **k: [])
+    monkeypatch.setattr(pollen, "at_point", lambda *a, **k: [dict(GRASSES_MODERATE)])
     return TestClient(app)
 
 
@@ -175,17 +198,45 @@ def test_summary_fails_loudly_when_every_source_is_down(monkeypatch):
     assert TestClient(app).get("/api/summary").status_code == 503
 
 
-def test_radar_endpoint_rejects_an_unknown_layer(client):
-    assert client.get("/api/radar.png?layer=bogus").status_code == 422
+def test_no_radar_proxy_is_served(client):
+    """The browser fetches radar tiles from DWD itself; we are not in the way.
+
+    Serving other people's imagery from this machine turned every map pan into
+    our bandwidth, and an open image endpoint into an amplifier. If someone
+    reinstates one, this is where they should have to think about it first.
+    """
+    assert client.get("/api/radar.png").status_code == 404
 
 
-def test_radar_endpoint_returns_png(client, monkeypatch):
-    from app.dwd import radar
+def test_summary_carries_the_pollen_reading(client):
+    """The board raises its own warning from this, so it has to be in the payload."""
+    reading = client.get("/api/summary").json()["pollen"][0]
+    assert reading["key"] == "grasses"
+    assert reading["level"] == "moderate"
+    assert reading["warn"] is False
 
-    monkeypatch.setattr(radar, "fetch_layer_image", lambda *a, **k: b"\x89PNG\r\n\x1a\nstub")
-    response = client.get("/api/radar.png")
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "image/png"
+
+def test_pollen_never_takes_the_page_down_with_it(monkeypatch, stub_dwd):
+    """A research forecast off a once-daily file is the least important thing
+    on the page, and must never be the reason the weather does not load."""
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("opendata.dwd.de unreachable")
+
+    monkeypatch.setattr(pollen, "at_point", boom)
+    body = TestClient(app).get("/api/summary").json()
+
+    assert body["pollen"] == []
+    assert body["current"] is not None
+    assert body["daily"]
+
+
+def test_radar_block_still_names_the_layer(client):
+    """The map needs the layer name and the area, and nothing else."""
+    radar = client.get("/api/summary").json()["radar"]
+    assert radar["layer"]
+    assert {"min_lat", "min_lon", "max_lat", "max_lon"} <= set(radar["bbox"])
+    assert "age_seconds" not in radar
 
 
 def test_best_window_is_reported(client):
@@ -437,6 +488,7 @@ def _stub_sources(monkeypatch, now, forecast, observed):
         },
     )
     monkeypatch.setattr(dwd_warnings, "fetch_warnings", lambda *a, **k: [])
+    monkeypatch.setattr(pollen, "at_point", lambda *a, **k: [dict(GRASSES_MODERATE)])
     return TestClient(app)
 
 

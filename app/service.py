@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 from app import fsi
 from app.config import settings
-from app.dwd import mosmix, observations, radar
+from app.dwd import mosmix, observations, pollen, radar
 from app.dwd import warnings as dwd_warnings
 from app.meteo import beaufort, wind_direction_name
 from app.models import WeatherPoint, Warning
@@ -363,6 +363,11 @@ def _collect(fetch, label: str, default):
         return default, f"{label} unavailable"
 
 
+def _pollen_here() -> List[Dict[str, Any]]:
+    """Today's pollen over the venue, heaviest species first."""
+    return pollen.at_point(settings.location.latitude, settings.location.longitude)
+
+
 def _fill_elapsed_gaps(points: List[WeatherPoint]) -> List[WeatherPoint]:
     """Put back elapsed hours of today that no forecast we hold covers.
 
@@ -427,6 +432,12 @@ def build_summary(lang: str = "en") -> Dict[str, Any]:
     fetched_warnings, warnings_error = _collect(
         lambda: dwd_warnings.fetch_warnings(lang=lang), "warnings", []
     )
+    # What is in the air here, not the map of where it is worst. Only the
+    # species in season answer, so this is two file reads in summer and none at
+    # all in December, both of them cached for six hours behind the daily run.
+    pollen_here = (
+        _collect(_pollen_here, "pollen", [])[0] if settings.pollen.enabled else []
+    )
 
     points: List[WeatherPoint] = _fill_elapsed_gaps(forecast.get("points", []))
     warning_list: List[Warning] = fetched_warnings or []
@@ -462,7 +473,11 @@ def build_summary(lang: str = "en") -> Dict[str, Any]:
             "longitude": settings.location.longitude,
             "timezone": settings.location.timezone,
             "station_id": settings.dwd.station_id,
-            "station_name": forecast.get("station_name"),
+            # The operator's name for the station wins: DWD abbreviates its own
+            # to fit a fixed field, and "HAMBURG-FU." is not a place anyone can
+            # picture. Theirs is the fallback, so an instance that never set one
+            # still says something rather than nothing.
+            "station_name": settings.dwd.station_name or forecast.get("station_name"),
         },
         "current": _serialise_point(current_point, lang) if current_point else None,
         "fsi": current_fsi.to_dict() if current_fsi else None,
@@ -474,6 +489,11 @@ def build_summary(lang: str = "en") -> Dict[str, Any]:
         # read. The old one stopped at +48 h and repeated 28 kB of it.
         "daily": _daily_summary(points, scores, forecast.get("extremes", {}), lang),
         "warnings": [w.to_dict() for w in warning_list],
+        # Alongside the warnings rather than among them: DWD issues those, this
+        # is our own reading of a research forecast, and the two should never be
+        # mistaken for one another. `warn` marks the ones heavy enough to say
+        # out loud -- see pollen.WARN_FROM_LEVEL.
+        "pollen": pollen_here,
         "radar": radar.radar_info(),
         "forecast_issued": forecast.get("issued").isoformat()
         if forecast.get("issued")

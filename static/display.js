@@ -94,6 +94,78 @@ function chartRanges(data) {
   return ranges;
 }
 
+/* --------------------------------------------------------------- alerts bar */
+
+/* One chip. `tone` carries the colour the chip is drawn in, which for a DWD
+   warning is DWD's own -- their severity palette is what staff already read on
+   the official app. */
+function alertChip(mark, title, detail, tone, extraClass) {
+  const chip = document.createElement('div');
+  chip.className = extraClass ? `alert ${extraClass}` : 'alert';
+  if (tone) {
+    chip.style.setProperty('--tone', tone);
+    chip.style.setProperty('--alert-ink', EFW.contrastText(tone));
+  }
+
+  const head = document.createElement('span');
+  head.className = 'alert-head';
+  head.textContent = `${mark} ${title}`;
+  chip.append(head);
+
+  if (detail) {
+    const note = document.createElement('span');
+    note.className = 'alert-detail';
+    note.textContent = detail;
+    chip.append(note);
+  }
+  return chip;
+}
+
+/** "until 20:00", or nothing at all if DWD did not say when it ends. */
+function warningWindow(warning) {
+  if (!warning.end) return '';
+  return `until ${clock24(warning.end)}`;
+}
+
+/* Official DWD warnings first, then pollen. Pollen only speaks up at "high" --
+   DWD's own threshold for heavy exposure -- because grass counts sit above the
+   moderate line for most of a northern-German summer, and a strip that is lit
+   every day is a strip nobody reads. */
+function renderAlerts(data) {
+  const host = $('alerts');
+  if (!host) return;
+  host.innerHTML = '';
+
+  for (const warning of data.warnings || []) {
+    host.append(
+      alertChip(
+        warning.advance ? '👁️' : '⚠️',
+        warning.advance ? `Advance notice: ${warning.event_en}` : warning.event_en,
+        [warning.region, warningWindow(warning)].filter(Boolean).join(' · '),
+        warning.color,
+        warning.advance ? 'is-advance' : ''
+      )
+    );
+  }
+
+  for (const reading of data.pollen || []) {
+    if (!reading.warn) continue;
+    host.append(
+      alertChip(
+        '🤧',
+        `Pollen: ${EFW_I18N.T(`pollen.${reading.key}`)} ${EFW_I18N.T(
+          `pollen.level.${reading.level}`
+        ).toLowerCase()}`,
+        `${fmt(reading.value, 0)} grains/m³ · DWD forecast, not a measurement`,
+        reading.color,
+        'is-pollen'
+      )
+    );
+  }
+
+  host.hidden = host.childElementCount === 0;
+}
+
 /* ---------------------------------------------------------- conditions tile */
 
 function fillConditions(items) {
@@ -201,7 +273,9 @@ function drawTimeline() {
     // with it. A monitor board gets bars that are only a picture.
     onSelect: TOUCH ? (entry) => pickHour(entry.time) : null,
     ranges: chartRanges(latest),
-    // Warnings live on the bars here; the board has no separate tile.
+    // Also on the bars, not only in the strip above: the strip says a warning
+    // is in force, the hatching says which hours it covers, and a shift
+    // planning the next few hours needs the second as much as the first.
     warnings: EFW.warningRanges(latest.warnings),
   });
 }
@@ -260,6 +334,7 @@ async function load() {
       setText('advice', fsi.advice);
     }
 
+    renderAlerts(data);
     drawTimeline();
     renderLegend();
     showConditions();

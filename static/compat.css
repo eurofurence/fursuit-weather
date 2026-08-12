@@ -88,13 +88,11 @@
 
 .no-color-mix .day { background: rgba(79, 99, 116, 0.1); }
 .no-color-mix .docs-main .note { background: rgba(179, 255, 255, 0.07); }
-.no-color-mix .todo { background: rgba(241, 60, 163, 0.12); }
 
 /* Mixed over the card rather than over nothing, so these are opaque. */
 .no-color-mix .error { background: #472e62; }
 .no-color-mix .load-notice { background: #3d4050; }
 .no-color-mix .load-notice.crowded { background: #44374a; }
-.no-color-mix .storage-notice { background: #1f284d; }
 
 .no-color-mix .warn-track .range.hatched { background-color: rgba(229, 57, 53, 0.28); }
 .no-color-mix .warnings-summary .advance-tag { background-color: rgba(229, 57, 53, 0.3); }
@@ -131,7 +129,6 @@
 .no-flex-gap .model-tabs > * + * { margin-left: 0.4rem; }
 .no-flex-gap .model-step > * + * { margin-left: 0.5rem; }
 .no-flex-gap .model-legend .row > * + * { margin-left: 0.6rem; }
-.no-flex-gap .storage-notice .actions > * + * { margin-left: 1rem; }
 .no-flex-gap .hour-detail .head > * + * { margin-left: 0.7rem; }
 .no-flex-gap .weights-body > * + * { margin-left: 1.1rem; }
 .no-flex-gap .warnings-summary > summary > * + * { margin-left: 0.5rem; }
@@ -201,13 +198,11 @@
 /* ---------------------------------------------------------------------------
    inset
 
-   Two fixed bars. Without the shorthand they have no offsets at all and settle
-   wherever the flow leaves them -- the loading bar in particular ends up
-   floating over the middle of the page.
+   The loading bar. Without the shorthand it has no offsets at all and settles
+   wherever the flow leaves it -- floating over the middle of the page.
    --------------------------------------------------------------------------- */
 
 .no-inset .progress { top: 0; right: 0; left: 0; bottom: auto; }
-.no-inset .storage-notice { top: auto; right: 0; bottom: 0; left: 0; }
 
 /* ---------------------------------------------------------------------------
    clamp()
@@ -253,8 +248,7 @@
    the text and the arrow itself), so an outline on it would be too. The ring it
    does get hangs off :focus-within on the pill, which is older than
    :focus-visible and so is there whenever this fallback is. */
-.no-focus-visible .timeline .hour:focus,
-.no-focus-visible .storage-notice button:focus {
+.no-focus-visible .timeline .hour:focus {
   outline: 2px solid var(--accent, #b3ffff);
   outline-offset: 2px;
 }

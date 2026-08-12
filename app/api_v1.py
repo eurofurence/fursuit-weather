@@ -4,10 +4,10 @@ Author: laffiesphere. Human-readable notes for consumers live at ``/api-docs``;
 this module is the contract those notes describe.
 
 Third parties (the EF app, bots, info screens) should build against ``/api/v1``
-and nothing else. The internal ``/api/summary`` exists for this project's own
-frontend and its shape follows whatever that frontend needs -- it will change
-without notice. Everything here is reshaped into the models in ``schemas.py``
-and is safe to depend on.
+and nothing else. It is the whole published surface: the aggregate the frontend
+reads and the map images it draws are deliberately absent from the schema,
+because their shape and their cost are the site's own business. Everything here
+is reshaped into the models in ``schemas.py`` and is safe to depend on.
 
 Endpoints are deliberately narrow: ``/api/v1/fsi`` is a few hundred bytes,
 where the internal aggregate is ~60 kB.
@@ -23,7 +23,6 @@ from fastapi import APIRouter, HTTPException, Query, Response
 
 from app import fsi as fsi_engine
 from app import schemas, service
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +33,43 @@ router = APIRouter(prefix="/api/v1", tags=["Public API v1"])
 CACHE_SECONDS = 120
 
 LanguageQuery = Query("en", pattern="^(en|de)$", description="Language for generated text")
+
+#: From the km/h the payload speaks in. The frontend keeps its own copy of these
+#: two numbers in i18n.js: it already holds every hour of the forecast, so making
+#: it ask the server again each time a reader taps "mph" would be a round trip to
+#: multiply a number it was already looking at.
+WIND_FACTORS = {"mph": 0.621371, "kn": 0.539957}
+
+WindUnitQuery = Query(
+    "kmh",
+    pattern="^(kmh|mph|kn)$",
+    description=(
+        "Adds a converted pair of wind fields beside the km/h ones: mph gives "
+        "wind_speed_mph/wind_gust_mph, kn gives wind_speed_kn/wind_gust_kn. "
+        "The km/h fields are always there whatever you ask for."
+    ),
+)
+
+
+def _wind(raw: Dict[str, Any], unit: str) -> Dict[str, float]:
+    """The converted wind fields for `unit`, or nothing at all for plain km/h.
+
+    Nothing at all is the point: the fields are left *unset* rather than set to
+    None, and the routes below serialise with ``exclude_unset``, so a caller who
+    never asked for knots never carries an empty knots field. Every other field
+    on these models is passed explicitly, so nothing else is affected.
+    """
+    factor = WIND_FACTORS.get(unit)
+    if factor is None:
+        return {}
+    return {
+        f"wind_{kind}_{unit}": round(value * factor, 1)
+        for kind, value in (
+            ("speed", raw.get("wind_speed_kmh")),
+            ("gust", raw.get("wind_gust_kmh")),
+        )
+        if value is not None
+    }
 
 
 def _summary(lang: str) -> Dict[str, Any]:
@@ -103,7 +139,7 @@ def _fsi(payload: Dict[str, Any]) -> Optional[schemas.FsiNow]:
     )
 
 
-def _current(payload: Dict[str, Any]) -> Optional[schemas.CurrentConditions]:
+def _current(payload: Dict[str, Any], wind_unit: str = "kmh") -> Optional[schemas.CurrentConditions]:
     raw = payload.get("current")
     if not raw:
         return None
@@ -115,6 +151,7 @@ def _current(payload: Dict[str, Any]) -> Optional[schemas.CurrentConditions]:
         humidity_percent=raw.get("humidity"),
         wind_speed_kmh=raw.get("wind_speed_kmh"),
         wind_gust_kmh=raw.get("wind_gust_kmh"),
+        **_wind(raw, wind_unit),
         wind_direction_deg=raw.get("wind_direction"),
         wind_direction=raw.get("wind_direction_name"),
         beaufort=raw.get("beaufort"),
@@ -127,7 +164,7 @@ def _current(payload: Dict[str, Any]) -> Optional[schemas.CurrentConditions]:
     )
 
 
-def _forecast(payload: Dict[str, Any], hours: int) -> schemas.Forecast:
+def _forecast(payload: Dict[str, Any], hours: int, wind_unit: str = "kmh") -> schemas.Forecast:
     # The scored series carries the hours of today that have already gone by so
     # the site can grey them out behind a "now" marker. ``hours`` means hours
     # from now, so those are skipped rather than spent against the horizon.
@@ -146,6 +183,7 @@ def _forecast(payload: Dict[str, Any], hours: int) -> schemas.Forecast:
             humidity_percent=entry.get("humidity"),
             wind_speed_kmh=entry.get("wind_speed_kmh"),
             wind_gust_kmh=entry.get("wind_gust_kmh"),
+            **_wind(entry, wind_unit),
             precipitation_mm=entry.get("precipitation"),
             precipitation_probability=entry.get("precipitation_prob"),
             weather=_weather(entry.get("weather")),
@@ -158,7 +196,7 @@ def _forecast(payload: Dict[str, Any], hours: int) -> schemas.Forecast:
     )
 
 
-def _daily(payload: Dict[str, Any]) -> schemas.Daily:
+def _daily(payload: Dict[str, Any], wind_unit: str = "kmh") -> schemas.Daily:
     days = [
         schemas.DailyEntry(
             date=day["date"],
@@ -171,6 +209,7 @@ def _daily(payload: Dict[str, Any]) -> schemas.Daily:
             precipitation_probability=day.get("precipitation_prob"),
             wind_speed_kmh=day.get("wind_speed_kmh"),
             wind_gust_kmh=day.get("wind_gust_kmh"),
+            **_wind(day, wind_unit),
             wind_direction_deg=day.get("wind_direction"),
             wind_direction=day.get("wind_direction_name"),
             humidity_percent=day.get("humidity"),
@@ -233,6 +272,13 @@ def _cache(response: Response) -> None:
 
 RESPONSES = {503: {"model": schemas.Problem}, 429: {"model": schemas.RateLimited}}
 
+#: Every field on every model below is passed explicitly by the builders above,
+#: so "unset" means exactly one thing: a converted wind field for a unit this
+#: caller did not ask for. Dropping those is why a plain request is byte for
+#: byte what it always was. Anything added to a model later must be passed the
+#: same way, or it will quietly stop appearing.
+LEAN = {"response_model_exclude_unset": True}
+
 
 @router.get(
     "/fsi",
@@ -257,10 +303,15 @@ def get_fsi(response: Response, lang: str = LanguageQuery) -> schemas.FsiNow:
     responses=RESPONSES,
     summary="Current observed conditions",
     description="The latest hourly surface observation from the DWD station.",
+    **LEAN,
 )
-def get_current(response: Response, lang: str = LanguageQuery) -> schemas.CurrentConditions:
+def get_current(
+    response: Response,
+    lang: str = LanguageQuery,
+    wind_unit: str = WindUnitQuery,
+) -> schemas.CurrentConditions:
     payload = _summary(lang)
-    result = _current(payload)
+    result = _current(payload, wind_unit)
     if result is None:
         raise HTTPException(status_code=503, detail="No observation available right now")
     _cache(response)
@@ -272,15 +323,17 @@ def get_current(response: Response, lang: str = LanguageQuery) -> schemas.Curren
     response_model=schemas.Forecast,
     responses=RESPONSES,
     summary="Hourly forecast with the index per hour",
+    **LEAN,
 )
 def get_forecast(
     response: Response,
     hours: int = Query(24, ge=1, le=120, description="How many hours from now"),
     lang: str = LanguageQuery,
+    wind_unit: str = WindUnitQuery,
 ) -> schemas.Forecast:
     payload = _summary(lang)
     _cache(response)
-    return _forecast(payload, hours)
+    return _forecast(payload, hours, wind_unit)
 
 
 @router.get(
@@ -288,11 +341,16 @@ def get_forecast(
     response_model=schemas.Daily,
     responses=RESPONSES,
     summary="Per-day summary with the best and worst hour",
+    **LEAN,
 )
-def get_daily(response: Response, lang: str = LanguageQuery) -> schemas.Daily:
+def get_daily(
+    response: Response,
+    lang: str = LanguageQuery,
+    wind_unit: str = WindUnitQuery,
+) -> schemas.Daily:
     payload = _summary(lang)
     _cache(response)
-    return _daily(payload)
+    return _daily(payload, wind_unit)
 
 
 @router.get(
@@ -332,19 +390,21 @@ def get_scale(response: Response, lang: str = LanguageQuery) -> schemas.Scale:
     summary="Everything at once, in the v1 shapes",
     description="One call for a full dashboard. Larger than the focused endpoints "
     "-- prefer those if you only need one part.",
+    **LEAN,
 )
 def get_overview(
     response: Response,
     hours: int = Query(24, ge=1, le=120),
     lang: str = LanguageQuery,
+    wind_unit: str = WindUnitQuery,
 ) -> schemas.Overview:
     payload = _summary(lang)
     _cache(response)
     return schemas.Overview(
         fsi=_fsi(payload),
-        current=_current(payload),
-        forecast=_forecast(payload, hours),
-        daily=_daily(payload),
+        current=_current(payload, wind_unit),
+        forecast=_forecast(payload, hours, wind_unit),
+        daily=_daily(payload, wind_unit),
         warnings=_warnings(payload),
         best_window=_window(payload.get("best_window")),
         worst_window=_window(payload.get("worst_window")),

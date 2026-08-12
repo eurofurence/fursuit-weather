@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import struct
-from datetime import date
+from datetime import date, datetime, timezone
 
 import numpy as np
 import pytest
@@ -287,3 +287,101 @@ def test_describe_survives_a_failing_run_probe(monkeypatch):
     described = pollen.describe((52.0, 9.0, 54.0, 11.0), when=date(2026, 8, 2))
     assert described["run"] is None
     assert described["species"]["grasses"]["bands"]
+
+
+# ------------------------------------------------------- the reading here
+
+
+def _stub_forecast(key: str, grid: np.ndarray, lats: tuple, lons: tuple):
+    """A Forecast whose grid is whatever the test needs, and no file behind it."""
+
+    class _Grid:
+        def masked(self, _variable, _step):
+            return grid
+
+    return pollen.Forecast(
+        key=key,
+        run=date(2026, 8, 2),
+        times=[datetime(2026, 8, 2, tzinfo=timezone.utc)],
+        lats=np.array(lats, dtype=np.float32),
+        lons=np.array(lons, dtype=np.float32),
+        dataset=_Grid(),
+    )
+
+
+def test_a_reading_comes_from_the_cell_the_venue_is_in(monkeypatch):
+    """Nearest cell, not the first one, and not an average of the country.
+
+    The grid is ~6.5 km across, so which cell is picked is the whole answer: a
+    row/column mix-up reads the pollen over somewhere else entirely and would
+    still look like a plausible number.
+    """
+    grid = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)
+    monkeypatch.setattr(
+        pollen, "fetch", lambda key, **k: _stub_forecast(key, grid, (53.0, 54.0), (9.0, 10.0, 11.0))
+    )
+    monkeypatch.setattr(pollen, "in_season", lambda key, when=None: key == "grasses")
+
+    # 53.6 N, 9.9 E is the venue: second row down, second column across.
+    reading = pollen.at_point(53.561337, 9.986310)[0]
+    assert reading["key"] == "grasses"
+    assert reading["value"] == 5.0
+
+
+def test_only_heavy_air_is_marked_as_something_to_warn_about(monkeypatch):
+    """DWD calls grass heavy past 30/m3; below that the board stays quiet."""
+    monkeypatch.setattr(pollen, "in_season", lambda key, when=None: key == "grasses")
+
+    for concentration, level, warn in ((5.0, "low", False), (12.0, "moderate", False),
+                                       (45.0, "high", True), (500.0, "very_high", True)):
+        grid = np.full((1, 1), concentration, dtype=np.float32)
+        monkeypatch.setattr(
+            pollen, "fetch", lambda key, g=grid, **k: _stub_forecast(key, g, (53.5,), (10.0,))
+        )
+        reading = pollen.at_point(53.561337, 9.986310)[0]
+        assert (reading["level"], reading["warn"]) == (level, warn), concentration
+
+
+def test_one_dead_species_does_not_hide_another(monkeypatch):
+    """Ragweed is the one that matters most and the one least often published.
+    A missing grasses file must not take it down with it."""
+    monkeypatch.setattr(pollen, "in_season", lambda key, when=None: key in ("grasses", "ragweed"))
+
+    def fetch(key, **kwargs):
+        if key == "grasses":
+            raise RuntimeError("file not published yet")
+        return _stub_forecast(key, np.full((1, 1), 40.0, dtype=np.float32), (53.5,), (10.0,))
+
+    monkeypatch.setattr(pollen, "fetch", fetch)
+    readings = pollen.at_point(53.561337, 9.986310)
+    assert [r["key"] for r in readings] == ["ragweed"]
+    assert readings[0]["warn"] is True
+
+
+def test_readings_come_back_heaviest_first(monkeypatch):
+    """A board with room for one line should get the one that matters."""
+    monkeypatch.setattr(pollen, "in_season", lambda key, when=None: key in ("grasses", "ragweed"))
+
+    def fetch(key, **kwargs):
+        value = 12.0 if key == "grasses" else 40.0  # moderate grass, very high ragweed
+        return _stub_forecast(key, np.full((1, 1), value, dtype=np.float32), (53.5,), (10.0,))
+
+    monkeypatch.setattr(pollen, "fetch", fetch)
+    assert [r["key"] for r in pollen.at_point(53.5, 10.0)] == ["ragweed", "grasses"]
+
+
+def test_hazel_and_alder_follow_dwds_own_heavy_threshold():
+    """DWD's Pollenflug-Gefahrenindex calls hazel and alder heavy past 100/m3.
+
+    They bloom in their hundreds, so the earlier 30 called an ordinary February
+    morning "very high" and would have left the board's warning strip lit for
+    most of the month.
+    """
+    for key in ("hazel", "alder"):
+        assert pollen.level_name(key, 99.0) == "moderate"
+        assert pollen.level_name(key, 100.0) == "high"
+
+    # The species DWD puts lower stay lower -- these already matched.
+    assert pollen.level_name("birch", 50.0) == "high"
+    assert pollen.level_name("grasses", 30.0) == "high"
+    assert pollen.level_name("ragweed", 10.0) == "high"
