@@ -66,7 +66,7 @@ class DWDWeatherAPI:
         self.config = config or {}
         self.session = requests.Session()
         self.session.headers.update({
-            'User-Agent': 'FSI-Calculator/2.0 (Eurofurence Weather; https://github.com/laffiie/EurofurenceWeather)'
+            'User-Agent': 'FSI-Calculator/2.0 (Eurofurence Weather; https://github.com/laffiesphere/EurofurenceWeather)'
         })
         
         # Cache für Daten

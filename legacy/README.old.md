@@ -34,7 +34,7 @@ fsi_plot.bat     # (Windows)
 
 ```bash
 # Repository klonen
-git clone https://github.com/laffiie/EurofurenceWeather.git
+git clone https://github.com/laffiesphere/EurofurenceWeather.git
 cd EurofurenceWeather
 
 # Abhängigkeiten installieren
@@ -92,7 +92,7 @@ python fsi_plot.py
 
 1. **Repository herunterladen:**
    ```bash
-   git clone https://github.com/laffiie/EurofurenceWeather.git
+   git clone https://github.com/laffiesphere/EurofurenceWeather.git
    cd EurofurenceWeather
    ```
 
@@ -357,7 +357,7 @@ Dieses Projekt steht unter der MIT-Lizenz. Siehe `LICENSE` für Details.
 ## 📞 Support
 
 Bei Fragen oder Problemen:
-- GitHub Issues: [Issues](https://github.com/laffiie/EurofurenceWeather/issues)
+- GitHub Issues: [Issues](https://github.com/laffiesphere/EurofurenceWeather/issues)
 - Email: [dein-email@example.com]
 
 ---
@@ -373,7 +373,7 @@ Bei Fragen oder Problemen:
 
 ```bash
 # Repository klonen
-git clone https://github.com/laffiie/EurofurenceWeather
+git clone https://github.com/laffiesphere/EurofurenceWeather
 cd EurofurenceWeather
 
 # Abhängigkeiten installieren

@@ -166,7 +166,7 @@ class Settings:
     cache: CacheTTL = field(default_factory=CacheTTL)
     forecast_hours: int = 120
     request_timeout: int = 20
-    user_agent: str = "EurofurenceWeather/2.0 (+https://github.com/laffiie/EurofurenceWeather)"
+    user_agent: str = "EurofurenceWeather/2.0 (+https://github.com/laffiesphere/EurofurenceWeather)"
 
 
 def _merge(target: Any, data: Dict[str, Any]) -> None:

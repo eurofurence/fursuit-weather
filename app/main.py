@@ -1,6 +1,6 @@
 """Eurofurence Weather -- FastAPI application entry point.
 
-Author: laffiesphere (https://github.com/laffiie/EurofurenceWeather)
+Author: laffiesphere (https://github.com/laffiesphere/EurofurenceWeather)
 
 The official weather site for the convention. Weather data comes from
 Deutscher Wetterdienst OpenData and is used under GeoNutzV; see /api-docs for
@@ -46,7 +46,7 @@ app = FastAPI(
         "Weather data © Deutscher Wetterdienst (DWD), used under GeoNutzV. "
         "Attribute DWD if you republish it."
     ),
-    contact={"name": "Project source", "url": "https://github.com/laffiie/EurofurenceWeather"},
+    contact={"name": "Project source", "url": "https://github.com/laffiesphere/EurofurenceWeather"},
     license_info={"name": "MIT"},
 )
 

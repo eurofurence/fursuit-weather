@@ -64,9 +64,6 @@ def band_scale(lang: str = "en") -> List[Dict]:
     ]
 
 
-#: Easter eggs, keyed by the exact reported score. ``id`` is passed to the
-#: frontend so it can react (a note, a video panel); everything else about the
-#: index is unaffected.
 EASTER_EGGS: Dict[float, str] = {
     6.9: "nice",
     6.7: "ravi67",
@@ -125,12 +122,23 @@ def _precipitation_score(point: WeatherPoint, lang: str) -> Tuple[float, str]:
     else:
         rate_score = 0.5
 
-    # Blend "it is raining" with "it might rain" using the probability.
-    probability = (point.precipitation_prob or 0.0) / 100.0
+    observed = point.precipitation_prob is None and rate > 0.0
+    if observed:
+        probability = 1.0
+    else:
+        probability = (point.precipitation_prob or 0.0) / 100.0
     score = (1.0 - probability) * 10.0 + probability * rate_score
-    reasons = [
-        t(lang, "reason.rainrate", rate=f"{rate:.1f}", prob=f"{(point.precipitation_prob or 0):.0f}")
-    ]
+    if observed:
+        reasons = [t(lang, "reason.rainmeasured", rate=f"{rate:.1f}")]
+    else:
+        reasons = [
+            t(
+                lang,
+                "reason.rainrate",
+                rate=f"{rate:.1f}",
+                prob=f"{(point.precipitation_prob or 0):.0f}",
+            )
+        ]
 
     # Wet ground means muddy paws for hours after the rain stops.
     if (point.precipitation_24h or 0.0) >= 2.0:
@@ -150,21 +158,23 @@ def _wind_score(point: WeatherPoint, lang: str) -> Tuple[float, str]:
         return 8.0, f"{t(lang, 'reason.wind')}: {t(lang, 'reason.nodata_wind')}"
 
     if wind <= 0.5:
-        score = 3.0  # dead calm -- a suit becomes an oven
-    elif wind <= 1.0:
-        score = 6.0
-    elif wind <= 3.0:
-        score = 9.5  # the sweet spot: real ventilation, nothing flapping
-    elif wind <= 6.0:
-        score = 8.0
-    elif wind <= 8.0:
+        score = 4.0
+    elif wind <= 1.5:
         score = 7.0
-    elif wind <= 10.0:
-        score = 5.0
-    elif wind <= 13.0:
-        score = 3.0
+    elif wind <= 3.3:
+        score = 10.0
+    elif wind <= 5.4:
+        score = 9.5
+    elif wind <= 7.9:
+        score = 7.0
+    elif wind <= 10.7:
+        score = 5.5
+    elif wind <= 13.8:
+        score = 2.0
+    elif wind <= 17.1:
+        score = 0.5
     else:
-        score = 1.5
+        score = 0
 
     reasons = [t(lang, "reason.windspeed", value=f"{wind:.1f}")]
     gust = point.wind_gust or 0.0
