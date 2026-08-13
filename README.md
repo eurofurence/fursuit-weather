@@ -85,14 +85,21 @@ weighted sub-scores feed it:
 | Factor | Weight | Why it matters |
 |---|---|---|
 | Temperature | 50 % | **Wet-bulb temperature** plus a sun load. A suit blocks the sweat evaporation your body relies on, so this dominates. |
-| Rain | 30 % | Rain rate blended with probability, plus a penalty for ground still wet from the last 24 h. |
+| Rain | 30 % | Rain rate blended with probability, plus a penalty for ground still wet from the last 24 h. Steep at the bottom: a suit soaks rain up and stays wet, so 0.3 mm in an hour is already a problem. |
 | Wind | 12 % | U-shaped: dead calm turns a suit into an oven, gales are dangerous. Best around 1–3 m/s. |
 | Humidity | 8 % | Dew point. |
 
-**Heat ceilings** then cap the result rather than being averaged into it, so a good
-sub-score can never mask a hazard: effective wet-bulb ≥ 24 °C caps the index at 3, ≥ 27 °C
-caps it at 1. Without this, "it isn't raining" (10/10) would drag a dangerously hot hour up
-into the middle of the scale.
+**Heat and rain ceilings** then cap the result rather than being averaged into it, so a
+good sub-score can never mask a bad hour: effective wet-bulb ≥ 24 °C caps the index at 3,
+≥ 27 °C caps it at 1. Without this, "it isn't raining" (10/10) would drag a dangerously hot
+hour up into the middle of the scale.
+
+The same holds the other way round. Rain is 30 % of the mean, so on an otherwise perfect
+afternoon the worst it could do was take three points off, and an hour that ends with a
+suit too wet to wear is not a three-point problem. A rain sub-score of 6.5 or below caps
+the index at 6, 4.0 at 4.5, and 2.0 at 2.5. The chance of rain is folded in as its square
+root, not raw: being caught out in suit is far worse than a dry hour is good, and it is a
+call you make an hour ahead.
 
 Warnings are shown **on the hourly bars**, over the hours they cover. A
 *Vorabinformation*. DWD flagging possible severe weather before it is certain enough to

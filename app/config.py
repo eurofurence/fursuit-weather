@@ -89,6 +89,19 @@ class FSIConfig:
             "danger_cap": 1.0,
         }
     )
+    #: Hard ceilings on the total score by the rain sub-score, which already
+    #: carries both the rate and the chance. Rain is only 30 % of the mean, far
+    #: too little for an hour that ends with a suit too wet to wear.
+    rain_caps: Dict[str, float] = field(
+        default_factory=lambda: {
+            "damp_score": 6.5,
+            "damp_cap": 6.0,
+            "wet_score": 4.0,
+            "wet_cap": 4.5,
+            "soaked_score": 2.0,
+            "soaked_cap": 2.5,
+        }
+    )
 
 
 @dataclass

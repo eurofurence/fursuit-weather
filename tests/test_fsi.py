@@ -106,6 +106,78 @@ def test_heavy_rain_dominates_the_score():
     assert wet.subscores["precipitation"]["score"] < 2.0
 
 
+def test_light_rain_pulls_an_otherwise_perfect_hour_down_to_fair():
+    """A cool, calm 0.4 mm hour used to score 9.5 and read "Excellent".
+
+    Every other part of that hour is a 10, and rain is 30 % of the mean, so the
+    weighted total cannot describe it: 0.4 mm at a 39 % chance is a suit you
+    carry home wet.
+    """
+    drizzle = fsi.compute(
+        point(
+            temperature=13.6,
+            humidity=91.0,
+            wind_speed=3.0,
+            precipitation=0.4,
+            precipitation_prob=39.0,
+        )
+    )
+    assert drizzle.label == "Fair"
+    assert drizzle.caps_applied  # the ceiling, not the mean, is what said so
+
+
+def test_the_rain_ceiling_scales_with_how_wet_the_hour_is():
+    mild = dict(temperature=14.0, humidity=60.0, wind_speed=2.0)
+    dry = fsi.compute(point(**mild))
+    damp = fsi.compute(point(precipitation=0.3, precipitation_prob=40.0, **mild))
+    wet = fsi.compute(point(precipitation=0.5, precipitation_prob=80.0, **mild))
+    soaked = fsi.compute(point(precipitation=5.0, precipitation_prob=100.0, **mild))
+
+    assert soaked.score < wet.score < damp.score < dry.score
+    assert [dry.label, damp.label, wet.label, soaked.label] == ["Excellent", "Fair", "Poor", "Bad"]
+
+
+def test_a_chance_of_rain_costs_something_on_its_own():
+    """The forecast often carries a real chance against 0.0 mm for the hour."""
+    mild = dict(temperature=14.0, humidity=60.0, wind_speed=2.0, precipitation=0.0)
+    certain_dry = fsi.compute(point(precipitation_prob=0.0, **mild))
+    maybe = fsi.compute(point(precipitation_prob=50.0, **mild))
+
+    assert certain_dry.subscores["precipitation"]["score"] == 10.0
+    assert maybe.score < certain_dry.score
+
+
+def test_the_chance_of_rain_is_weighed_risk_averse():
+    """Half a chance of rain has to cost more than half the malus.
+
+    Getting caught out in a suit is worse than a dry hour is good, so the blend
+    uses the square root of the probability rather than the probability itself.
+    """
+    wet = dict(temperature=14.0, humidity=60.0, wind_speed=2.0, precipitation=1.0)
+    certain = fsi.compute(point(precipitation_prob=100.0, **wet))
+    half = fsi.compute(point(precipitation_prob=50.0, **wet))
+    never = fsi.compute(point(precipitation_prob=0.0, **wet))
+
+    midpoint = (
+        never.subscores["precipitation"]["score"] + certain.subscores["precipitation"]["score"]
+    ) / 2
+    assert half.subscores["precipitation"]["score"] < midpoint
+
+
+def test_a_trace_of_rain_at_a_low_chance_still_leaves_a_good_hour():
+    """The malus is steep, not a cliff at the first drop the model shows."""
+    result = fsi.compute(
+        point(
+            temperature=14.0,
+            humidity=60.0,
+            wind_speed=2.0,
+            precipitation=0.1,
+            precipitation_prob=20.0,
+        )
+    )
+    assert result.score >= 7.0
+
+
 def test_wind_is_u_shaped():
     still = fsi.compute(point(wind_speed=0.2)).subscores["wind"]["score"]
     ideal = fsi.compute(point(wind_speed=2.0)).subscores["wind"]["score"]

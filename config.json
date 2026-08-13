@@ -42,6 +42,14 @@
       "caution_cap": 3.0,
       "danger_wetbulb": 27.0,
       "danger_cap": 1.0
+    },
+    "rain_caps": {
+      "damp_score": 6.5,
+      "damp_cap": 6.0,
+      "wet_score": 4.0,
+      "wet_cap": 4.5,
+      "soaked_score": 2.0,
+      "soaked_cap": 2.5
     }
   },
   "api": {

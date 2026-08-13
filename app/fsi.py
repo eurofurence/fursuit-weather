@@ -11,8 +11,9 @@ Four weighted sub-scores feed the result:
     wind              U-shaped: still air traps heat, gales knock heads off
     stickiness        dew point, i.e. how clammy the air feels
 
-Dangerous heat then caps the result, because a weighted mean would otherwise let
-a perfect rain score rescue an hour nobody should be suited in.
+Dangerous heat and rain then cap the result, because a weighted mean would
+otherwise let a perfect rain score rescue an hour nobody should be suited in --
+and, from the other side, let a mild sunny afternoon carry a wet one.
 
 Official DWD warnings deliberately do *not* affect the score. They are published
 alongside it -- marked on the hourly bars over the hours they cover -- and left
@@ -21,6 +22,7 @@ for the reader to weigh, rather than folded into a single number.
 
 from __future__ import annotations
 
+from math import sqrt
 from typing import Dict, Iterable, List, Tuple
 
 from app.config import settings
@@ -125,24 +127,43 @@ def _thermal_score(
     return score, f"{t(lang, 'reason.heat')}: " + ", ".join(reasons)
 
 
+#: (rate in mm/h at the top of the step, score). The 0.0 entry is what a bare
+#: chance of rain is worth when the forecast puts no amount against it.
+RAIN_IF_IT_FALLS: List[Tuple[float, float]] = [
+    (0.0, 6.0),
+    (0.1, 5.0),
+    (0.3, 3.5),
+    (0.5, 2.5),
+    (1.0, 1.5),
+    (2.0, 0.5),
+]
+
+
+def _wet_hour_score(rate: float) -> float:
+    """What an hour is worth *if* the rain falls, by rate in mm/h.
+
+    Steep at the bottom on purpose. A suit soaks rain up and stays wet long
+    after it stops, so there is no "light enough to ignore" here the way there
+    is in ordinary clothes: 0.3 mm in an hour is already enough to end a walk.
+    """
+    for threshold, score in RAIN_IF_IT_FALLS:
+        if rate <= threshold:
+            return score
+    return 0.0
+
+
 def _precipitation_score(point: WeatherPoint, lang: str) -> Tuple[float, str]:
     rate = point.precipitation or 0.0
-    if rate <= 0.0:
-        rate_score = 10.0
-    elif rate <= 0.5:
-        rate_score = 7.0
-    elif rate <= 1.0:
-        rate_score = 5.0
-    elif rate <= 2.0:
-        rate_score = 2.5
-    else:
-        rate_score = 0.5
+    rate_score = _wet_hour_score(rate)
 
     observed = point.precipitation_prob is None and rate > 0.0
     if observed:
         probability = 1.0
     else:
-        probability = (point.precipitation_prob or 0.0) / 100.0
+        # The square root of the chance, not the chance itself: being caught out
+        # in a suit is far worse than a dry hour is good, so a 40 % chance has to
+        # weigh more than 40 %. It is also a decision made an hour in advance.
+        probability = sqrt(min(100.0, max(0.0, point.precipitation_prob or 0.0)) / 100.0)
     score = (1.0 - probability) * 10.0 + probability * rate_score
     if observed:
         reasons = [t(lang, "reason.rainmeasured", rate=f"{rate:.1f}")]
@@ -254,6 +275,35 @@ def _apply_heat_cap(score: float, effective_wetbulb: float, lang: str) -> Tuple[
     return score, []
 
 
+def _apply_rain_cap(score: float, precipitation: float, lang: str) -> Tuple[float, List[str]]:
+    """The heat argument from the other side: rain has to outrank a nice day.
+
+    Rain is 30 % of the weighted mean, so on an otherwise perfect afternoon the
+    very worst it can do is take three points off -- and a suit you cannot wear
+    home is not a three point problem. These are ceilings on the total, so the
+    hour is described by the thing that will actually decide it.
+    """
+    caps = settings.fsi.rain_caps
+
+    for threshold, cap, note_key in (
+        (caps["soaked_score"], caps["soaked_cap"], "cap.soaked"),
+        (caps["wet_score"], caps["wet_cap"], "cap.wet"),
+        (caps["damp_score"], caps["damp_cap"], "cap.damp"),
+    ):
+        if precipitation <= threshold and cap < score:
+            return cap, [
+                t(
+                    lang,
+                    "cap.rain_detail",
+                    note=t(lang, note_key),
+                    value=f"{precipitation:.1f}",
+                    cap=f"{cap:g}",
+                )
+            ]
+
+    return score, []
+
+
 def compute(point: WeatherPoint, lang: str = "en") -> FSIResult:
     """Score a single observation or forecast step."""
     temperature = point.temperature
@@ -293,6 +343,8 @@ def compute(point: WeatherPoint, lang: str = "en") -> FSIResult:
 
     effective_wetbulb = round(wetbulb_c + solar_load, 1)
     total, caps = _apply_heat_cap(total, effective_wetbulb, lang)
+    total, rain_caps = _apply_rain_cap(total, round(precipitation, 1), lang)
+    caps += rain_caps
     label, color, advice = _band(total, lang)
 
     easter_egg = EASTER_EGGS.get(total)
