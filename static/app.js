@@ -18,9 +18,14 @@ function text(el, value) {
   el.textContent = value;
 }
 
-let latest = null; 
+let latest = null;
 const PAST_CONTEXT_HOURS = 6;
 const STALE_AFTER_MS = 15 * 60 * 1000;
+
+/* When the service worker stored the payload we are showing, or null when it
+   came off the network just now. Set from the stamp sw.js puts on its copies. */
+let offlineCopyAt = null;
+let lastLoadAt = 0;
 
 /* ---------------------------------------------------------------- warnings */
 
@@ -739,11 +744,32 @@ let radarMeter = null;
 const BASEMAP_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 const basemapUrl = () => BASEMAP_URL;
 
+/* A Leaflet map with dragging on claims every touch that lands on it --
+   leaflet.css sets `touch-action: none` on it -- so on a phone the page cannot
+   be scrolled past the map at all: the finger pans the map instead, and both
+   maps sit mid-page. One-finger dragging is therefore off wherever the pointer
+   is a finger; two fingers still pan and zoom, and a mouse is unaffected. */
+const COARSE_POINTER =
+  typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+
+function addMapHint(container) {
+  if (!COARSE_POINTER) return;
+  const hint = document.createElement('p');
+  hint.className = 'map-hint';
+  hint.dataset.i18n = 'map.twoFinger'; // so it follows a language switch
+  hint.textContent = T('map.twoFinger');
+  container.insertAdjacentElement('afterend', hint);
+}
+
 function initMap(data) {
   if (map) return;
 
   const { latitude, longitude } = data.location;
-  map = L.map('map', { scrollWheelZoom: false }).setView([latitude, longitude], 8);
+  map = L.map('map', { scrollWheelZoom: false, dragging: !COARSE_POINTER }).setView(
+    [latitude, longitude],
+    8
+  );
+  addMapHint($('map'));
 
   // A map fills in piece by piece and can sit half-drawn for seconds, which
   // reads as broken rather than busy. Count the tiles instead.
@@ -796,13 +822,26 @@ function initMap(data) {
 
 }
 
+/* One cache-buster per radar cycle, shared by everyone, rather than one per tab
+   per refresh: Date.now() made every visitor's tiles a unique URL to DWD, so no
+   browser, proxy or tile cache between here and maps.dwd.de could serve any of
+   them twice. The composite only changes every refresh_seconds anyway. */
+function radarStamp() {
+  const seconds = (latest && latest.radar && latest.radar.refresh_seconds) || 240;
+  return Math.floor(Date.now() / (seconds * 1000));
+}
+
 function refreshRadar() {
-  if (radarLayer) radarLayer.setParams({ _t: Date.now() });
-  if (warningLayer) warningLayer.setParams({ _t: Date.now() });
-  text(
-    $('radar-status'),
-    `${T('radar.updated')} ${EFW_I18N.time(new Date())}`
-  );
+  // Offline the tiles cannot arrive at all, and stamping the current time on a
+  // map that never reloaded is the one lie this line could tell.
+  if (offlineCopyAt) {
+    text($('radar-status'), T('radar.offline'));
+    return;
+  }
+  const stamp = radarStamp();
+  if (radarLayer) radarLayer.setParams({ _t: stamp });
+  if (warningLayer) warningLayer.setParams({ _t: stamp });
+  text($('radar-status'), `${T('radar.updated')} ${EFW_I18N.time(new Date())}`);
 }
 
 /* ------------------------------------------------------------ model card */
@@ -986,11 +1025,13 @@ function ensureModelMap() {
   const b = modelInfo.bbox;
   modelMap = L.map(container, {
     scrollWheelZoom: false,
+    dragging: !COARSE_POINTER,
     attributionControl: false,
     // Integer zoom steps would round down past the exact fit and leave the
     // field floating in the middle of the frame; fractional zoom fills it.
     zoomSnap: 0,
   });
+  addMapHint(container);
   modelMeter = EFW_LOADING.meter(container);
   const tiles = L.tileLayer(basemapUrl(), { maxZoom: 19, subdomains: 'abcd' }).addTo(modelMap);
   modelMeter?.follow(tiles);
@@ -1559,21 +1600,29 @@ function render(data) {
   // from MOSMIX instead. The timestamp lives on the index panel, which knows
   // which of the two it is showing.
   //
-  // The one thing it does say: that these numbers are old. A payload this far
-  // past its build time came out of the offline cache, so the page is up but
-  // the data behind it is not what is happening outside.
-  const stale = Date.now() - new Date(data.generated_at).getTime() > STALE_AFTER_MS;
+  // What it says instead is *which* kind of "not live" this is. One line used to
+  // cover all of them by asserting the server could not be reached, which was a
+  // guess from the payload's age: a phone with a wrong clock, or a proxy holding
+  // a response, got told it was offline when it was not, and a server that was
+  // reached but had no DWD data behind it said nothing at all.
   const subtitle = $('subtitle');
-  subtitle.hidden = !stale;
-  subtitle.classList.toggle('stale', stale);
-  if (stale) {
-    text(
-      subtitle,
-      T('app.stale', {
-        when: EFW_I18N.dateTime(data.generated_at, { day: 'numeric', month: 'short' }),
-      })
-    );
+  let notice = null;
+  if (offlineCopyAt) {
+    // The service worker handed us its saved copy, so this is certain rather
+    // than inferred -- and the age is measured on one clock, this browser's.
+    notice = T('app.offlineCopy', { when: EFW_I18N.time(offlineCopyAt) });
+  } else if ((data.degraded || []).length) {
+    // We reached the server; the server did not reach DWD, and has no older
+    // copy of that source to fall back on either. See _collect in service.py.
+    notice = T('app.sourceDown');
+  } else if (Date.now() - new Date(data.generated_at).getTime() > STALE_AFTER_MS) {
+    notice = T('app.stale', {
+      when: EFW_I18N.dateTime(data.generated_at, { day: 'numeric', month: 'short' }),
+    });
   }
+  subtitle.hidden = !notice;
+  subtitle.classList.toggle('stale', Boolean(notice));
+  if (notice) text(subtitle, notice);
 
   const stamp = { day: '2-digit', month: '2-digit', year: 'numeric' };
   const meta = [`${T('footer.updated')} ${EFW_I18N.dateTime(data.generated_at, stamp)}`];
@@ -1585,13 +1634,17 @@ function render(data) {
 }
 
 async function load() {
+  lastLoadAt = Date.now(); // an attempt, so a failure throttles the retry too
   try {
     const response = await EFW_LOADING.track(
       fetch(`/api/summary?lang=${EFW_I18N.getLang()}`, { cache: 'no-store' })
     );
+    const storedAt = response.headers.get('X-EFW-Stored-At');
+    offlineCopyAt = storedAt ? Number(storedAt) : null;
     // Before the status check: a 429 under a rush is precisely when the visitor
-    // most deserves to be told the site is busy rather than broken.
-    readSiteLoad(response);
+    // most deserves to be told the site is busy rather than broken. A copy out
+    // of the cache carries how busy the site was then, which is not news.
+    if (!offlineCopyAt) readSiteLoad(response);
     if (!response.ok) throw new Error(`server ${response.status}`);
     const data = await response.json();
 
@@ -1645,8 +1698,20 @@ function initOffline() {
   });
 }
 
+/* A tab nobody is looking at does not need a forecast, and a few thousand
+   phones in pockets polling every five minutes is traffic -- ours and DWD's --
+   that buys nothing. It catches up the moment the tab comes back. */
+function refreshIfDue() {
+  // Against our own last attempt, not against the payload's timestamp: a device
+  // clock that disagrees with the server's would otherwise decide the data is
+  // from the future and never refresh again.
+  if (document.hidden || Date.now() - lastLoadAt < REFRESH_MS) return;
+  load();
+}
+
 EFW_I18N.apply();
 initPreferences();
 initOffline();
 load();
-setInterval(load, REFRESH_MS);
+setInterval(refreshIfDue, REFRESH_MS);
+document.addEventListener('visibilitychange', refreshIfDue);

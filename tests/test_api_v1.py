@@ -16,7 +16,7 @@ from app import i18n as app_i18n
 from app import main
 from app.dwd import mosmix, observations, pollen
 from app.dwd import warnings as dwd_warnings
-from app.dwd.client import cache
+from app.dwd.client import cache, field_cache
 from app.api_v1 import WIND_FACTORS
 from app.main import app
 from app.models import WeatherPoint, Warning
@@ -35,12 +35,14 @@ ENDPOINTS = (
 @pytest.fixture(autouse=True)
 def clean_state(monkeypatch):
     cache.clear()
+    field_cache.clear()
     main.limiter.reset()
     # The summary behind every v1 endpoint reads pollen, which is a file per
     # species in season. Not from here it is not: the suite stays offline.
     monkeypatch.setattr(pollen, "at_point", lambda *a, **k: [])
     yield
     cache.clear()
+    field_cache.clear()
     main.limiter.reset()
 
 

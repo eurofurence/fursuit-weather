@@ -21,7 +21,7 @@ import requests
 from PIL import Image, ImageDraw
 
 from app.config import settings
-from app.dwd.client import cache, get_session
+from app.dwd.client import cache, field_cache, get_session
 from app.dwd.grib2 import GribField, decode
 
 logger = logging.getLogger(__name__)
@@ -157,7 +157,8 @@ def _fetch_field(param: str, run: datetime, step: int) -> GribField:
         response.raise_for_status()
         return decode(bz2.decompress(response.content))
 
-    return cache.get_or_fetch(f"icon:{param}:{run:%Y%m%d%H}:{step}", FIELD_TTL, _load)
+    # Bounded: 49 steps of five fields is far more than fits in the container.
+    return field_cache.get_or_fetch(f"icon:{param}:{run:%Y%m%d%H}:{step}", FIELD_TTL, _load)
 
 
 # --------------------------------------------------------------- rendering

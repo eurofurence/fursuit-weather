@@ -8,11 +8,18 @@ window.EFW_I18N = (function () {
       'app.offline': 'Offline',
       'app.error': 'Could not load weather data',
       'app.retry': 'Retrying shortly…',
-      'app.stale': 'Saved copy from {when}. could not reach the server.',
+      /* Three different reasons the page is not live, kept apart on purpose --
+         see the subtitle block in app.js. */
+      'app.offlineCopy':
+        'Unable to fetch services. Last update: {when}.',
+      'app.sourceDown':
+        'DWD services can\'t be reached right now. Please stay patient!',
+      'app.stale': 'Not refreshed since {when}. The conditions may have moved on.',
 
-      'load.busy': 'Busy right now. a lot of people are here, so pages may take a moment.',
+      /* Says a crowd is here, never what the site runs on -- it is EF's server now. */
+      'load.busy': 'Higher traffic than usual. Please stay patient.',
       'load.crowded':
-        'Very busy right now. This site runs on one small computer, so loading will be slow for a while. Everything still works. please be patient!',
+        'Very high traffic on the site. Site might load longer. Please be patient!',
 
       'fsi.heading': 'Fursuiting Index',
       'fsi.hour': 'forecast hour',
@@ -79,6 +86,8 @@ window.EFW_I18N = (function () {
       'radar.heading': 'Rain radar',
       'radar.showWarnings': 'Show warning areas',
       'radar.updated': 'Radar updated',
+      'radar.offline': 'Unable to load fetch Radar at this moment.',
+      'map.twoFinger': 'Use two fingers to move the map.',
 
       'model.heading': 'Model maps from ICON (DWD)',
       'model.clouds': 'Clouds',
@@ -145,11 +154,15 @@ window.EFW_I18N = (function () {
       'app.offline': 'Offline',
       'app.error': 'Wetterdaten konnten nicht geladen werden',
       'app.retry': 'Neuer Versuch in Kürze…',
-      'app.stale': 'Gespeicherte Fassung von {when}. Server nicht erreichbar.',
+      'app.offlineCopy':
+        'Die Services können gerade nicht erreicht werden. Du siehst die Vorhersage von {when}.',
+      'app.sourceDown':
+        'Gerade sind die DWD-Services nicht erreichbar. Bitte geduldig bleiben!',
+      'app.stale': 'Seit {when} nicht aktualisiert. Die Lage kann sich geändert haben.',
 
-      'load.busy': 'Gerade ist viel los. es sind viele Leute hier, das Laden kann etwas dauern.',
+      'load.busy': 'Gerade sind viele Leute auf der Seite, das Laden kann etwas dauern.',
       'load.crowded':
-        'Sehr viel los gerade. Diese Seite läuft auf einem einzelnen kleinen Rechner, das Laden wird eine Weile langsam sein. Es funktioniert weiterhin alles.',
+        'Hohe Auslastung der Seite. Die Seite kann länger laden als gewohnt. Bitte bleib geduldig!',
 
       'fsi.heading': 'Fursuiting Index',
       'fsi.hour': 'Vorhersagestunde',
@@ -190,7 +203,7 @@ window.EFW_I18N = (function () {
 
       'info.about': 'Was bedeutet {term}?',
       'info.wetbulb':
-        'Die Feuchtkugeltemperatur ist eine Temperatur, den dein Körper durchs Schwitzen  minimal erreichen kann. Sie liegt unter der echten Lufttemperatur, und je näher beide beieinander liegen, desto weniger bringt das Schwitzen',
+        'Die Feuchtkugeltemperatur ist eine Temperatur, den dein Körper durchs Schwitzen minimal erreichen kann. Sie liegt unter der echten Lufttemperatur, und je näher beide beieinander liegen, desto weniger bringt das Schwitzen',
       'info.dewpoint':
         'Der Taupunkt ist eine eigene Größe und sagt, wie schwül sich die Luft anfühlt: ab etwa 15 °C wird es klamm.',
 
@@ -216,6 +229,8 @@ window.EFW_I18N = (function () {
       'radar.heading': 'Regenradar',
       'radar.showWarnings': 'Warngebiete anzeigen',
       'radar.updated': 'Radar aktualisiert',
+      'radar.offline': 'Neuste Radarbilder können gerade nicht geladen werden.',
+      'map.twoFinger': 'Karte mit zwei Fingern bewegen.',
 
       'model.heading': 'Modellkarte des ICON (DWD)',
       'model.clouds': 'Bewölkung',

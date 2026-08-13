@@ -292,13 +292,16 @@ body {
   border-radius: 5px;
 }
 
+/* Read from across the room, not from a desk: heavier and larger than a caption
+   would normally be. Fits inside the 7.4vh .timeline reserves below the bars. */
 .timeline .hour::after {
   content: attr(data-label);
   position: absolute;
-  bottom: -2.4vh;
+  bottom: -2.6vh;
   left: 50%;
   transform: translateX(-50%);
-  font-size: clamp(0.6rem, 1.5vh, 1rem);
+  font-size: clamp(0.72rem, 1.9vh, 1.25rem);
+  font-weight: 800;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }

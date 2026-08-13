@@ -34,7 +34,7 @@ import requests
 from PIL import Image
 
 from app.config import settings
-from app.dwd.client import cache, get_session
+from app.dwd.client import cache, field_cache, get_session
 from app.dwd.icon import crop_grid, resize_field
 from app.dwd.netcdf import Dataset
 
@@ -319,7 +319,7 @@ def fetch(key: str, run: Optional[date] = None) -> Forecast:
             dataset=dataset,
         )
 
-    return cache.get_or_fetch(f"pollen:{key}:{run:%Y%m%d}", FILE_TTL, _load)
+    return field_cache.get_or_fetch(f"pollen:{key}:{run:%Y%m%d}", FILE_TTL, _load)
 
 
 # --------------------------------------------------------------- rendering

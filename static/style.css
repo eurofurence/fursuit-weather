@@ -678,6 +678,8 @@ body {
 /* ---------- Radar ---------- */
 
 .map { height: 380px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); }
+/* Only added on touch screens, where one-finger dragging is off; see addMapHint. */
+.map-hint { margin: 0.45rem 0 0; font-size: 0.8rem; color: var(--muted); }
 .leaflet-container { border-radius: 10px; font: inherit; background: var(--bg); }
 
 .radar-controls { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin: 0.65rem 0 0; font-size: 0.85rem; color: var(--muted); }

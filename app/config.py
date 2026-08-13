@@ -106,9 +106,9 @@ class APISettings:
 class CapacitySettings:
     """When to tell visitors the site is busy.
 
-    This machine is one home PC on a home uplink, so the honest thing to do
-    under a rush is say so. The counting behind it is cookie-free; see
-    ``app/presence.py``.
+    One container serves the whole convention, so "too many people at once" is a
+    state it can reach whatever it is hosted on. The notice says a crowd is here,
+    not what the site runs on. The counting is cookie-free; see ``app/presence.py``.
 
     The defaults are a starting guess for a single container: watch
     ``/api/load`` during a busy hour and move them to where the site actually

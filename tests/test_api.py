@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app import service
 from app.dwd import icon, mosmix, observations, pollen
 from app.dwd import warnings as dwd_warnings
-from app.dwd.client import cache
+from app.dwd.client import cache, field_cache
 from app.main import app
 from app.models import WeatherPoint, Warning
 
@@ -19,6 +19,7 @@ from app.models import WeatherPoint, Warning
 @pytest.fixture(autouse=True)
 def clear_cache(monkeypatch):
     cache.clear()
+    field_cache.clear()
     # Every summary now reads the pollen over the venue, which means a NetCDF
     # file per species in season. No test may go and get one: the blanket stub
     # is here rather than in each fixture so a test added later cannot quietly
@@ -27,6 +28,7 @@ def clear_cache(monkeypatch):
     monkeypatch.setattr(pollen, "at_point", lambda *a, **k: [])
     yield
     cache.clear()
+    field_cache.clear()
 
 
 #: A real pollen reading means downloading a NetCDF file per species in season,
@@ -462,6 +464,7 @@ def test_current_falls_back_to_the_hour_we_are_in(monkeypatch, elapsed_client):
     the first hour of *today*, not the hour we are in."""
     monkeypatch.setattr(observations, "fetch_current", lambda *a, **k: None)
     cache.clear()
+    field_cache.clear()
 
     body = elapsed_client.get("/api/summary").json()
     assert datetime.fromisoformat(body["current"]["time"]) == _hour_now()

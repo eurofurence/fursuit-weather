@@ -13,7 +13,9 @@
    network always gets first refusal and the cache is a fallback, never a
    shortcut past a deploy. */
 
-const CACHE = 'efw-v1';
+/* Bumped when the stored format changes: v2 stamps each copy with the time it
+   was kept, and a v1 entry without that stamp would be read as live data. */
+const CACHE = 'efw-v2';
 
 /* Enough to draw the page and say something true. Radar frames, model images
    and the video are left out on purpose: they are large, they change
@@ -71,6 +73,23 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(networkFirst(request));
 });
 
+/* Stamped onto every copy as it is stored, so the page can tell a cached
+   response from a live one and say how old it is. The value is this browser's
+   own clock at the moment it was kept, which is the same clock the page later
+   compares it against -- a device whose clock is wrong is then still right
+   about the age. */
+const STORED_AT = 'X-EFW-Stored-At';
+
+async function keep(cache, request, response) {
+  const headers = new Headers(response.headers);
+  headers.set(STORED_AT, String(Date.now()));
+  const body = await response.blob();
+  await cache.put(
+    request,
+    new Response(body, { status: response.status, statusText: response.statusText, headers })
+  );
+}
+
 /** Give the network first refusal, then fall back to the last good copy. */
 async function networkFirst(request) {
   const cache = await caches.open(CACHE);
@@ -79,7 +98,7 @@ async function networkFirst(request) {
     // Keep whatever arrives even if the race below has already given up on it,
     // so a slow connection still leaves the next load better off than this one.
     // Errors are not worth keeping: a cached 502 would outlive the outage.
-    if (response.ok) cache.put(request, response.clone());
+    if (response.ok) keep(cache, request, response.clone());
     return response;
   });
   // Claimed below on both paths, but not always in time to count as handled.
