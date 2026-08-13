@@ -97,7 +97,10 @@
     <!-- Filled in when a bar is clicked: the conditions behind that hour. -->
     <div class="hour-detail" id="hour-detail" hidden></div>
 
-    <p class="subscores-head"><span data-i18n="fsi.scoreHeader">Score</span></p>
+    <!-- The bars below break down the headline score, unless a bar on the strip
+         above has been picked -- then they break down that hour instead, and
+         this says which one. -->
+    <p class="subscores-head"><span class="at" id="subscores-at"></span><span data-i18n="fsi.scoreHeader">Score</span></p>
     <ul class="subscores" id="subscores"></ul>
     <p class="fsi-caps" id="fsi-caps" hidden></p>
     <details class="explain">

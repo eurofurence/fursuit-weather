@@ -123,6 +123,7 @@ function formatRange(start, end) {
 
 function renderFSI(data) {
   const fsi = data.fsi;
+  nowFsi = fsi || null; // what the card falls back to when nothing is picked
   const card = $('fsi-card');
   if (!fsi) {
     text($('fsi-label'), T('band.bad'));
@@ -153,15 +154,31 @@ function renderFSI(data) {
   const when = T(measured ? 'fsi.measured' : 'fsi.hour');
   text($('fsi-time'), observed ? `· ${when} ${EFW_I18N.time(observed)}` : '');
 
-  const list = $('subscores');
+  // The headline hour, unless a bar on the strip has been picked -- then this
+  // shows that hour instead. Drawn from the same place either way.
+  syncCardBreakdown();
+
+  renderWeights(fsi.subscores);
+}
+
+/**
+ * The parts a score is made of, as a row of horizontal bars.
+ *
+ * The headline score and any hour picked off a chart are broken down the same
+ * way, so one function draws both. An hour out of the series carries no names
+ * with it -- they are the same four for all 120 of them, so the payload
+ * publishes them once -- and `subLabels` puts them back.
+ */
+function renderSubscores(list, subscores) {
   list.innerHTML = '';
-  for (const entry of Object.values(fsi.subscores)) {
+  for (const key of Object.keys(subscores || {})) {
+    const entry = subscores[key];
     const item = document.createElement('li');
-    item.title = entry.reason;
+    if (entry.reason) item.title = entry.reason;
 
     const name = document.createElement('span');
     name.className = 'name';
-    name.textContent = entry.label;
+    name.textContent = entry.label || subLabels[key] || key;
 
     const bar = document.createElement('span');
     bar.className = 'bar';
@@ -177,12 +194,52 @@ function renderFSI(data) {
     item.append(name, bar, num);
     list.append(item);
   }
+}
 
+/** The names of the four parts, which the series no longer repeats per hour.
+    An older payload out of the offline cache has them on the current score
+    instead, so that is the fallback rather than four untranslated keys. */
+function labelsFor(data) {
+  if (data.subscore_labels) return data.subscore_labels;
+  const subscores = (data.fsi && data.fsi.subscores) || {};
+  const labels = {};
+  for (const key of Object.keys(subscores)) labels[key] = subscores[key].label;
+  return labels;
+}
+
+/**
+ * Point the card's breakdown at whichever hour is selected.
+ *
+ * Only for the strip in this card: a bar picked in a day card is several
+ * screens further down, where nothing changing up here could be seen at all,
+ * so those open their own bars in the panel beside them.
+ *
+ * The heat caps follow the same hour. They override the weighted total, so on
+ * a capped hour the four parts do not add up to the score, and the note saying
+ * why has to be the note for the hour on show.
+ */
+function syncCardBreakdown() {
+  const list = $('subscores');
   const caps = $('fsi-caps');
-  caps.hidden = !fsi.caps_applied.length;
-  text(caps, fsi.caps_applied.join(' · '));
+  if (!list || !caps) return;
 
-  renderWeights(fsi.subscores);
+  const entry = pickedChart === 'timeline' ? conditionsByTime.get(picked) : null;
+  // An hour with no forecast behind it has no parts to show; rather than empty
+  // the panel, the card keeps saying what it says when nothing is picked.
+  const hour = entry && entry.subscores && Object.keys(entry.subscores).length ? entry : null;
+  const source = hour || nowFsi;
+  if (!source) return;
+
+  renderSubscores(list, source.subscores);
+
+  const applied = source.caps_applied || [];
+  caps.hidden = !applied.length;
+  text(caps, applied.join(' · '));
+
+  // Which hour these bars are about. Blank for "now": the heading above the
+  // card already carries the time that one was measured at.
+  const at = $('subscores-at');
+  if (at) at.textContent = hour ? EFW_I18N.dateTime(hour.time, { weekday: 'short' }) : '';
 }
 
 /* ------------------------------------------- how much each part of it counts */
@@ -398,6 +455,8 @@ let picked = null; // ISO time of the selected hour
 let pickedChart = null; // which chart it was picked in
 let charts = []; // {key, strip, detail, series}, rebuilt on every render
 let conditionsByTime = new Map(); // ISO time -> the enriched entry from fsi_series
+let subLabels = {}; // sub-score key -> its name, published once per payload
+let nowFsi = null; // the current score, which the card shows with nothing picked
 
 const hourEntry = (entry) => ({ ...entry, ...(conditionsByTime.get(entry.time) || {}) });
 
@@ -452,12 +511,16 @@ function applySelection() {
 
     const entry = time ? series.find((item) => item.time === time) : null;
     if (entry) {
-      renderHourDetail(detail, hourEntry(entry));
+      // The index card breaks the picked hour down in its own bars, right
+      // below this panel; anywhere else the panel has to carry them itself.
+      renderHourDetail(detail, hourEntry(entry), key !== 'timeline');
     } else {
       detail.innerHTML = '';
       detail.hidden = true;
     }
   }
+
+  syncCardBreakdown();
 }
 
 function clearPickState() {
@@ -465,7 +528,7 @@ function clearPickState() {
   pickedChart = null;
 }
 
-function renderHourDetail(host, entry) {
+function renderHourDetail(host, entry, breakdown) {
   host.innerHTML = '';
 
   const color = entry.color || EFW.scoreColor(entry.score);
@@ -522,6 +585,34 @@ function renderHourDetail(host, entry) {
   ]);
 
   host.append(head, grid);
+
+  // Where the hour's score came from, on the same bars the index card uses.
+  // Only where the card's own set is out of sight -- in the card itself those
+  // bars are a few lines below, and drawing a second copy here would ask the
+  // reader which of two identical rows is the one they picked.
+  const subscores = entry.subscores;
+  if (breakdown && subscores && Object.keys(subscores).length) {
+    const heading = document.createElement('p');
+    heading.className = 'subscores-head';
+    const word = document.createElement('span');
+    word.textContent = T('fsi.scoreHeader');
+    heading.append(word);
+
+    const list = document.createElement('ul');
+    list.className = 'subscores';
+    renderSubscores(list, subscores);
+    host.append(heading, list);
+
+    // A heat ceiling overrides the weighted total, so without this the four
+    // bars visibly fail to add up to the score in the corner of the panel.
+    const caps = entry.caps_applied || [];
+    if (caps.length) {
+      const note = document.createElement('p');
+      note.className = 'fsi-caps';
+      note.textContent = caps.join(' · ');
+      host.append(note);
+    }
+  }
 
   // Say so plainly, rather than letting a forecast for 09:00 read as advice.
   if (EFW.hourStart(entry.time) + 3600 * 1000 <= Date.now()) {
@@ -1428,6 +1519,7 @@ function render(data) {
 
   charts = [];
   conditionsByTime = new Map((data.fsi_series || []).map((entry) => [entry.time, entry]));
+  subLabels = labelsFor(data);
 
   renderWarnings(data.warnings);
   renderFSI(data);

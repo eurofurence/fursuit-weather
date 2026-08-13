@@ -358,6 +358,12 @@ body {
   opacity: 0.7;
 }
 .subscores-head span { grid-column: 3; text-align: right; }
+/* "Score" heads the column of numbers on the right; the hour those numbers are
+   about belongs over the names on the left, so it is placed rather than left to
+   land in the same cell. Set like the rest of the head: it is part of it, not a
+   remark underneath. Empty -- nothing picked -- it takes no room and shows
+   nothing. */
+.subscores-head .at { grid-column: 1 / span 2; text-align: left; }
 
 .subscores { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
 .subscores li { display: grid; grid-template-columns: 8.5rem 1fr 2.2rem; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
@@ -634,9 +640,12 @@ body {
   margin-bottom: 0.7rem;
 }
 /* Day name over its date: the weekday is what you scan for, so it gets the
-   whole line rather than competing with the date on the same baseline. */
+   whole line rather than competing with the date on the same baseline.
+   Pinned to the header: the card also holds the panel a picked hour opens in,
+   and the names of the four sub-scores in there are a caption, not a heading --
+   left to `.day .name` they came out in 1.45rem bold and burst their column. */
 .day .when { display: grid; }
-.day .name { font-weight: 700; font-size: 1.45rem; line-height: 1.1; letter-spacing: -0.01em; }
+.day header .name { font-weight: 700; font-size: 1.45rem; line-height: 1.1; letter-spacing: -0.01em; }
 .day .date { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .day .cond { font-size: 0.92rem; }
 .day .cond .icon { font-size: 1.3rem; vertical-align: -0.15rem; }
@@ -1054,7 +1063,17 @@ body {
 
 .hour-detail .now { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: 0.55rem 1rem; }
 .hour-detail .now .item .v { font-size: 1rem; }
+
 .hour-detail .past-note { margin: 0.55rem 0 0; font-size: 0.78rem; opacity: 0.7; }
+
+/* A day card's panel carries its own breakdown of the hour -- the index card's
+   bars are several screens up. Nothing here is tinted with the score, so the
+   track behind each bar is mixed from the text colour: --ink is the index
+   card's, and its fallback of black on this dark card left the bars floating
+   over nothing. */
+.hour-detail .subscores-head { margin-top: 0.75rem; }
+.hour-detail .subscores .bar { background: color-mix(in srgb, var(--text) 16%, transparent); }
+.hour-detail .fsi-caps { background: color-mix(in srgb, var(--text) 14%, transparent); }
 
 /* Inside the tinted panel the field labels have to follow the contrast ink --
    the muted grey they use elsewhere is unreadable on amber or green. */

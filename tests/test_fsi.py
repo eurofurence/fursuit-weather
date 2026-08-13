@@ -165,6 +165,44 @@ def test_compute_series_scores_each_hour_on_its_own_weather():
     assert series[0]["color"] == fsi.band_color(series[0]["score"])
 
 
+def test_every_hour_carries_the_parts_its_score_is_made_of():
+    """Clicking a bar moves the breakdown onto that hour, so it needs one.
+
+    The same numbers and the same wording as the score itself: two ways of
+    saying what an hour is like would eventually disagree about one.
+    """
+    hot = point(hour=13, temperature=31.0, humidity=70.0)
+    entry = fsi.compute_series([hot])[0]
+    result = fsi.compute(hot)
+
+    assert set(entry["subscores"]) == set(result.subscores)
+    for key, part in entry["subscores"].items():
+        assert part["score"] == result.subscores[key]["score"]
+        assert part["reason"] == result.subscores[key]["reason"]
+        # The names are the same for all 120 hours, so the series leaves them to
+        # subscore_labels() rather than repeating them per hour.
+        assert "label" not in part
+        assert "weight" not in part
+
+
+def test_a_capped_hour_says_so_and_an_ordinary_one_stays_quiet():
+    """The parts of a capped hour do not add up to its score; the note is why."""
+    capped = fsi.compute_series([point(hour=13, temperature=38.0, humidity=80.0)])[0]
+    assert capped["caps_applied"]
+
+    assert "caps_applied" not in fsi.compute_series([point(temperature=14.0)])[0]
+
+
+def test_subscore_labels_are_published_once_and_translated():
+    labels = fsi.subscore_labels("en")
+    assert set(labels) == set(fsi.compute(point()).subscores)
+    assert labels["thermal_humidity"] == "Temperature"
+    assert fsi.subscore_labels("de")["precipitation"] == "Regen"
+    # The score's own names come from the same place, so a client can put the
+    # two together for an hour off the series.
+    assert fsi.compute(point()).subscores["wind"]["label"] == labels["wind"]
+
+
 def test_warnings_are_not_an_input_to_the_index():
     """Warnings are reported next to the score, never folded into it.
 

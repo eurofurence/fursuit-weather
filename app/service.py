@@ -466,6 +466,9 @@ def build_summary(lang: str = "en") -> Dict[str, Any]:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "language": lang,
         "bands": fsi.band_scale(lang),
+        # What the four parts of the score are called. Once, rather than on
+        # every hour of the series that carries them -- see compute_series.
+        "subscore_labels": fsi.subscore_labels(lang),
         "event": {"name": settings.event.name, "short_name": settings.event.short_name},
         "location": {
             "name": settings.location.name,

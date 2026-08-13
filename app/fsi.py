@@ -69,6 +69,22 @@ EASTER_EGGS: Dict[float, str] = {
     6.7: "ravi67",
 }
 
+#: The parts of the score, in the order they are reported, and the phrase book
+#: entry each one's name comes from. The hourly series does not repeat the
+#: names -- they are the same for all 120 hours -- so the summary publishes them
+#: once from here, and a score carries the very same strings.
+SUBSCORE_LABELS: Dict[str, str] = {
+    "thermal_humidity": "sub.thermal",
+    "precipitation": "sub.precipitation",
+    "wind": "sub.wind",
+    "stickiness": "sub.stickiness",
+}
+
+
+def subscore_labels(lang: str = "en") -> Dict[str, str]:
+    """What each part of the score is called, for a client that draws them."""
+    return {key: t(lang, phrase) for key, phrase in SUBSCORE_LABELS.items()}
+
 
 def _band(score: float, lang: str) -> Tuple[str, str, str]:
     for threshold, key, color in BANDS:
@@ -283,6 +299,7 @@ def compute(point: WeatherPoint, lang: str = "en") -> FSIResult:
     if easter_egg == "nice":
         advice = f"{advice} {t(lang, 'easter.nice')}"
 
+    labels = subscore_labels(lang)
     return FSIResult(
         score=round(total, 1),
         label=label,
@@ -292,25 +309,25 @@ def compute(point: WeatherPoint, lang: str = "en") -> FSIResult:
             "thermal_humidity": {
                 "score": round(thermal, 1),
                 "weight": weights["thermal_humidity"],
-                "label": t(lang, "sub.thermal"),
+                "label": labels["thermal_humidity"],
                 "reason": thermal_reason,
             },
             "precipitation": {
                 "score": round(precipitation, 1),
                 "weight": weights["precipitation"],
-                "label": t(lang, "sub.precipitation"),
+                "label": labels["precipitation"],
                 "reason": precipitation_reason,
             },
             "wind": {
                 "score": round(wind, 1),
                 "weight": weights["wind"],
-                "label": t(lang, "sub.wind"),
+                "label": labels["wind"],
                 "reason": wind_reason,
             },
             "stickiness": {
                 "score": round(sticky, 1),
                 "weight": weights["stickiness"],
-                "label": t(lang, "sub.stickiness"),
+                "label": labels["stickiness"],
                 "reason": sticky_reason,
             },
         },
@@ -327,15 +344,28 @@ def compute_series(points: Iterable[WeatherPoint], lang: str = "en") -> List[Dic
     series: List[Dict] = []
     for point in points:
         result = compute(point, lang)
-        series.append(
-            {
-                "time": point.time.isoformat(),
-                "score": result.score,
-                "label": result.label,
-                "color": result.color,
-                # Carried per hour so clicking a bar can show what is behind it.
-                "wetbulb": result.wetbulb,
-                "dewpoint": result.dewpoint,
-            }
-        )
+        entry = {
+            "time": point.time.isoformat(),
+            "score": result.score,
+            "label": result.label,
+            "color": result.color,
+            # Carried per hour so clicking a bar can show what is behind it.
+            "wetbulb": result.wetbulb,
+            "dewpoint": result.dewpoint,
+            # The parts the hour's score is made of, so picking a bar can move
+            # the breakdown onto that hour rather than leaving it on "now".
+            # Trimmed to what changes hour by hour: the names are published once
+            # as ``subscore_labels`` and the weights are the same throughout,
+            # and repeated over 120 hours either would cost more than the
+            # numbers themselves.
+            "subscores": {
+                key: {"score": sub["score"], "reason": sub["reason"]}
+                for key, sub in result.subscores.items()
+            },
+        }
+        # Only when one fired: a heat ceiling overrides the weighted total, so
+        # without it the four parts of a capped hour do not add up to its score.
+        if result.caps_applied:
+            entry["caps_applied"] = result.caps_applied
+        series.append(entry)
     return series
